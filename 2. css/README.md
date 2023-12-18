@@ -46,16 +46,13 @@ p {
   - border는 요소 박스의 테두리를 의미합니다.
   - CSS는 요소를 사각형의 박스로 표시하기 때문에 border 역시 사각형으로 그려집니다.
 - 요소 박스의 배치
+  - [position](./position.md): static, absolute, relative, fixed
   - [float](./float.md)
-  - position: static, absolute, relative, fixed
-  - flex
-  - grid
+  - [flex](./flex.md)
+  - [grid](./grid.md)
 
 
 ---
-- 
-- css 테두리
-- css 요소 박스의 배치
 - css 다단 구조
 - css Transform
 - css Animation
