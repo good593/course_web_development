@@ -1,0 +1,73 @@
+#box1 {
+    width: 250px;
+    height: 250px;
+    background-color: red;
+    font-size: 225px;
+    text-align: center;
+
+    animation: myColorChange;
+    animation-play-state: running;
+    animation-iteration-count: infinite;
+    animation-delay: 0s;
+    animation-timing-function: linear;
+    animation-duration: 5s;
+
+    /* animation: 3s linear 0s infinite running myRotate; */
+}
+
+#box1:hover {
+    animation: 3s linear 0s infinite running myRotate;
+}
+
+
+@keyframes mySlide {
+    from {
+        margin-left: 100%;
+    }
+    to {
+        margin-left: 0%;
+    }
+}
+
+@keyframes myRotate {
+    100% {
+        transform: rotateX(360deg)
+        /* transform: rotateY(360deg) */
+        /* transform: rotateZ(360deg) */
+    }
+}
+
+@keyframes myOpacity {
+    50% {
+        opacity: 0;
+    }
+}
+
+@keyframes myScale {
+    50% {
+        transform: scale(0.5, 0.5);
+    }
+}
+
+@keyframes myColorChange {
+    0% {
+        background-color: red;
+    }
+
+    25% {
+        background-color: yellow;
+    }
+    
+    50% {
+        background-color: green;
+    }
+
+    75% {
+        background-color: blue;
+    }
+
+    100% {
+        background-color: purple;
+    }
+}
+

@@ -1,0 +1,15 @@
+img {
+    width: 200px;
+    height: 200px;
+    border: 1px solid;
+    font-size: 40px;
+    text-align: center;
+    background-color: tomato;
+
+    float: left;
+}
+
+p {
+    clear:both;
+}
+

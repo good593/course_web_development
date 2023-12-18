@@ -1,0 +1,15 @@
+h1{
+    border-top-style: dotted;
+    border-bottom-style: dotted;
+    border-left-style: double;
+    border-left-width: 50px;
+    border-left-color: blue;
+}
+
+p{
+    border-style: outset;
+    border-width: 5px;
+    border-color: gold;
+    border-radius: 10px;
+    /* padding: 5px; */
+}

@@ -1,0 +1,42 @@
+div {
+  width: 100px;
+  height: 100px;
+  margin-bottom: 20px;
+  background: red;
+}
+
+.container {
+  background: yellow;
+  left: 20px;
+  top: 20px;
+  position: static;
+}
+
+#relative {
+  background: blue;
+  left: 20px;
+  top: 20px;
+  position: relative;
+}
+
+#absolute {
+  background: blue;
+  left: 20px;
+  top: 20px;
+  position: absolute;
+}
+
+#fixed {
+  background: blue;
+  margin: 100px;
+  left: 20px;
+  top: 20px;
+  position: fixed;
+}
+
+#sticky {
+  background: blue;
+  left: 20px;
+  top: 20px;
+  position: sticky;
+}
