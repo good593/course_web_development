@@ -35,18 +35,25 @@ p {
 ---
 # CSS 사용법
 [연습하기 좋은 싸이트](https://flukeout.github.io/)
-
 - [selector](./selector.md)
   - 선택자(selecters)를 사용하면 DOM 요소의 다양한 기능에 기반한 조건을 통해 스타일을 입힐 수 있습니다.
 - [text](./text.md)
 - [box 모델](./box.md)
+- [색상과 배경](./color.md)
+
+---
+- [테두리](./border.md)
+  - border는 요소 박스의 테두리를 의미합니다.
+  - CSS는 요소를 사각형의 박스로 표시하기 때문에 border 역시 사각형으로 그려집니다.
+- 요소 박스의 배치
+  - [float](./float.md)
+  - position: static, absolute, relative, fixed
+  - flex
+  - grid
 
 
 ---
 - 
-- css 텍스트
-- css 박스모델
-- css 색상과 배경
 - css 테두리
 - css 요소 박스의 배치
 - css 다단 구조
