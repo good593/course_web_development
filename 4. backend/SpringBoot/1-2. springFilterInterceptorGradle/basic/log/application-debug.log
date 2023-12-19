@@ -1,0 +1,4 @@
+"2023-09-23 15:54:27,491 INFO  [Test worker] com.example.basic.BasicApplicationTests : Starting BasicApplicationTests using Java 17.0.8.1 with PID 44227 (started by gyoungwon-cho in /Users/gyoungwon-cho/dev/google drive/google_lecture/04. web framework/backend/Spring/1-2. springFilterInterceptorGradle/basic)
+""2023-09-23 15:54:27,494 INFO  [Test worker] com.example.basic.BasicApplicationTests : No active profile set, falling back to 1 default profile: "default"
+""2023-09-23 15:54:27,929 INFO  [Test worker] com.example.basic.BasicApplicationTests : Started BasicApplicationTests in 0.549 seconds (process running for 1.029)
+"

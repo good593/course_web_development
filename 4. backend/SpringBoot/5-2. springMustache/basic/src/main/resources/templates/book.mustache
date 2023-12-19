@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sample Spring Boot application with Mustache</title>
+</head>
+<body>
+{{#book}}
+    <p> Book ID: {{bookid}}</p>
+    <p> Book Title: {{bookTitle}}</p>
+    {{#isbn}}
+        <p> isbn: {{isbn}}</p>
+    {{/isbn}}
+    {{^isbn}}
+        <p> isbn가 거짓입니다.</p>
+    {{/isbn}}
+    <p> Price: {{price}}</p>
+{{/book}}
+</body>
+</html>

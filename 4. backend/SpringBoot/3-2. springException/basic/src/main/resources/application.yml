@@ -1,0 +1,6 @@
+# Spring Data Source 설정 
+spring:
+
+  output:
+    ansi:
+      enabled: always 
