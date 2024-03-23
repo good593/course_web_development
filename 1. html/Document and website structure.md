@@ -13,6 +13,12 @@ paginate: true
 웹페이지는 서로 많이 다르게 보일 수 있지만, 페이지가 전체화면 비디오 혹은 게임이거나 예술 프로젝트, 좋지 않은 구조를 가지고 있지 않은 이상에는 대부분 유사한 구성 요소를 가지고 있습니다.
 
 ---
+![alt text](./img/semantic/image-1.png)
+
+---
+![alt text](./img/semantic/image-2.png)
+
+---
 ## header
 - `<header>`
 > 일반적으로 큰 제목과 로고 등이 있는 큰 띠, 한 웹페이지에서 주요 정보가 있는 곳입니다.
@@ -44,6 +50,7 @@ paginate: true
 - non-semantic 요소들(<`div>, <span> 등`)은 자신의 컨텐츠에 대해 아무것도 설명해주지 않는다.
 - semantic 요소들(`<form>, <table>, <article> 등`)은 자신의 컨텐츠를 명확하게 정의한다.
 
+![bg right w:600](./img/semantic/image.png)
 
 ---
 ## 주요 시멘틱 요소들
