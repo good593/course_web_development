@@ -12,7 +12,27 @@ marp: true
 
 ---
 # [Maven](./maven.md)
-- [Spring Boot Initializr](https://start.spring.io/)
+
+---
+# Spring Boot 생성하기 
+
+---
+### 단계1: [Spring Boot Initializr](https://start.spring.io/)
+![alt text](image.png)
+
+---
+
+
+
+
+
+
+
+
+
+
+
+
 
 ---
 # 참고자료
