@@ -92,8 +92,13 @@ mvn site-deploy # 생성한 문서 사이트를 설정되어 있는 서버에 �
 ## Maven Build 예제(1) 
 ```shell
 > cd [프로젝트 폴더] # 프로젝트 폴더로 이동 
+# mac os인경우
 > mvn clean package  # maven build
-> java -jar ./target/basic-0.0.1-SNAPSHOT.jar # 프로젝트 실행 
+# window os인경우 
+> ./mvnw clean package  # maven build
+
+# 프로젝트 실행
+> java -jar ./target/basic-0.0.1-SNAPSHOT.jar  
 ```
 
 ---
