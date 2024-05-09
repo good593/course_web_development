@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.springbasic.model.User2Dto;
+import com.example.springbasic.model.UserDto;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,7 +42,7 @@ public class PostController {
 
     // localhost:8080/api/v1/post/variable2
     @PostMapping("/variable2")
-    public String postVariable2(@RequestBody User2Dto dto) {
+    public String postVariable2(@RequestBody UserDto dto) {
         log.info("[PostController][postVariable2] Start");
 
         log.info(dto.toString());

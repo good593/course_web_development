@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.springbasic.model.User1Dto;
-import com.example.springbasic.model.User2Dto;
 import com.example.springbasic.model.UserDto;
 
 import lombok.extern.slf4j.Slf4j;
@@ -96,25 +94,7 @@ public class GetContoller {
         log.info("name: "+dto.getName());
         log.info("email: "+dto.getEmail());
         log.info("age: "+dto.getAge());
-        return "getQeury5";
-    }
-
-    // localhost:8080/api/v1/get/query6?name=name1&email=sample@gmail.com&age=33
-    @GetMapping("/query6")
-    public String getQuery6(@ModelAttribute User1Dto dto) {
-        log.info("[GetContoller][query6] Start");
-
-        log.info(dto.toString());
-        return "getQeury6";
-    }
-
-    // localhost:8080/api/v1/get/query7?name=name1&email=sample@gmail.com&age=33
-    @GetMapping("/query7")
-    public String getQuery6(@ModelAttribute User2Dto dto) {
-        log.info("[GetContoller][query7] Start");
-
-        log.info(dto.toString());
-        return "getQeury7";
+        return "getQeury5: "+dto.toString();
     }
 
 }
