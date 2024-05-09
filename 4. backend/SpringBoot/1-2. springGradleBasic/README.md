@@ -1,80 +1,61 @@
 ---
 marp: true
 ---
+# [Gradle](https://velog.io/@tjseocld/Gradle-%EC%9D%B4%EB%9E%80)
+- gradle은 오픈소스 빌드 자동화 툴로, 거의 모든 타입의 소프트웨어를 빌드할 수 있는 유연함을 가집니다.
 
-# Spring Boot
+---
+## Gradle 특징 
+- High Performance
+  - Gradle은 실행시켜야 하는 task만 실행시키고 다른 불필요한 동작은 하지 않으며, build cache를 사용함으로써 이전 실행의 task output을 재사용합니다. 
+- JVM foundation
+  - Gradle은 JVM 에서 실행되기 때문에 JDK를 설치해야 합니다. 
+- Convetions
+  - Gradle은 Maven으로부터 의존 라이브러리 관리 기능을 차용했습니다. 
+- Extensibility
+  - Gradle을 확장하면 고유의 task 타입을 제공하거나 모델을 빌드할 수 있습니다.
+
+---
+## Gradle 파일 구성 
+- Spring을 Gradle 프로젝트로 생성하면 다음과 같은 구조를 갖게됩니다.
+```shell
+├─ gradle
+│ └─ wrapper
+│ ├─ gradle-wrapper.jar
+│ └─ gradle-wrapper.properties
+├─ gradlew
+├─ gradlew.bat
+├─ build.gradle
+└─ settings.gradle
+```
+
+---
+![alt text](./img/image.png)
+
+---
+## Gradle 라이브러리 의존성 관리
+![w:700](./img/image-1.png)
+
+---
+### build.gradle
+- 라이브러리 의존성 설정은 build.gradle 스크립트 파일에 작성할 수 있습니다.
+- Dependency Configuration
+  - `Implementation` : 구현할 때에만 사용됩니다.
+  - `compileOnly` : 컴파일할 때에만 사용하고 런타임에는 사용되지 않습니다.
+  - `runtimeOnly` : 런타임 때에만 사용됩니다.
+  - `testImplementation` : 테스트할 때에만 사용됩니다.
+
+---
+![w:800](./img/image-2.png)
+
+---
+### [라이브러리 의존성 주입](https://mvnrepository.com/artifact/com.mysql/mysql-connector-j/8.0.33) 
+![alt text](./img/image-3.png)
+
+---
+# [basic 프로젝트](https://start.spring.io/)
+![alt text](./img/image-4.png)
+
+---
+# 참고문서
 - [ToDo App 만들기](https://www.youtube.com/watch?v=A_foK6PnsPs)
-
----
-- spring boot 생성
-![Alt text](./img/image-1.png)
-
----
-
-- 설치된 라이브러리 확인
-![Alt text](./img/image.png)
-
----
-## MySQL 설치전 사전작업 
-- dbeaver 설치 
-- Docker 설치
-- mysql 설치 폴더 생성
-    - mkdir ./mysql
-    - mkdir ./mysql/database 
-
----
-- ./mysql/docker-compose.yml 파일 생성 
-```
-version: "2"
-
-services:
-  vacation-db:
-    image: mysql
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: "root1234"
-      MYSQL_DATABASE: "examplesdb"
-      MYSQL_USER: "urstory"
-      MYSQL_PASSWORD: "u1234"
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-    volumes:
-      - ./database/init/:/docker-entrypoint-initdb.d/
-      - ./database/datadir/:/var/lib/mysql
-    platform: linux/x86_64
-    ports:
-      - 3306:3306
-
-```
----
-
-## MySQL 설치
-```
-> cd ./mysql # docker-compose.yml이 있는 폴더로 이동 
-> docker-compose up -d # mysql 생성 및 실행 
-> docker ps # 생성된 mysql 확인 
-```
-![Alt text](./img/image-4.png)
-
----
-## MySQL 접속 
-- dbeaver를 이용하여 mysql 접속 
-![Alt text](./img/image-2.png)
-
----
-![Alt text](./img/image-3.png)
-
----
-## spring boot에 mysql 설정 
-- ./src/resources/application.yml 생성 (application.properties 파일 삭제!!)
-```
-# Spring Data Source 설정 
-spring:
-  datasource:
-    url: jdbc:mysql://127.0.0.1:3306/examplesdb?userSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
-    username: urstory
-    password: u1234
-    driver-class-name: com.mysql.cj.jdbc.Driver
-
-```

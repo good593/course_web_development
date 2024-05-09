@@ -2,6 +2,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "BasicApplication",
+            "request": "launch",
+            "mainClass": "com.example.basic.BasicApplication",
+            "projectName": ""
+        },
+        {
+            "type": "java",
             "name": "Spring Boot-TodoappApplication<todoapp>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
