@@ -1,4 +1,4 @@
-package com.example.basic.model.dto;
+package com.example.basic.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -12,8 +12,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BasicLombokDto {
-  
-  private String name;
-  private String email;
+    private String name;
+    private String email;
 
 }
