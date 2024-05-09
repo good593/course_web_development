@@ -9,7 +9,7 @@ marp: true
 
 ---
 ## [OAuth2 Login Flow](https://www.marcobehler.com/guides/spring-security-oauth2)
-![Alt text](image.png)
+![w:800](./img/image.png)
 
 ---
 # Google OAuth
