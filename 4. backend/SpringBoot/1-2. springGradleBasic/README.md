@@ -57,5 +57,20 @@ marp: true
 ![alt text](./img/image-4.png)
 
 ---
+### Gradle Build
+```shell
+cd [프로젝트 폴더] # 프로젝트 폴더로 이동 
+./gradlew clean build # gradle build
+```
+![alt text](./img/image-5.png)
+
+---
+### 프로젝트 실행 
+```shell
+java -jar .\build\libs\basic-0.0.1-SNAPSHOT.jar
+```
+![alt text](./img/image-6.png)
+
+---
 # 참고문서
 - [ToDo App 만들기](https://www.youtube.com/watch?v=A_foK6PnsPs)
