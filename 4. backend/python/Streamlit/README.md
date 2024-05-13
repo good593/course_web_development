@@ -1,5 +1,6 @@
-- https://minimin2.tistory.com/184
-- https://zzsza.github.io/mlops/2021/02/07/python-streamlit-dashboard/
-- https://docs.kanaries.net/ko/topics/Streamlit/how-to-run-streamlit
+- https://docs.streamlit.io/develop/tutorials
+- https://github.com/teddylee777/streamlit-tutorial
+- https://www.datacamp.com/tutorial/streamlit
+- https://www.machinelearningnuggets.com/streamlit-tutorial/#streamlit-configurations
 
 
