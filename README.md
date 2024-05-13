@@ -99,11 +99,12 @@ paginate: true
 
 ---
 ### Python
-- [Django](./4.%20backend/Django/README.md)
-- [FastAPI](./4.%20backend/FastAPI/README.md)
+- [Django](./4.%20backend/python//Django/README.md)
+- [FastAPI](./4.%20backend/python//FastAPI/README.md)
+- [Streamlit](./4.%20backend/python/Streamlit/README.md)
 ### Java
-- [JSP](./4.%20backend/JSP/README.md)
-- [Spring Boot](./4.%20backend/SpringBoot/README.md)
+- [JSP](./4.%20backend/java//JSP/README.md)
+- [Spring Boot](./4.%20backend/java//SpringBoot/README.md)
 
 ---
 # FrontEnd
