@@ -3,3 +3,7 @@
 
 # Mac OS
 .DS_Store
+
+
+# python 
+.venv
