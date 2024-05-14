@@ -25,7 +25,7 @@ pip install --upgrade pip # upgrade
 ```shell
 pip install streamlit pandas numpy matplotlib seaborn finance-datareader
 ```
-![alt text](./img/mage-1.png)
+![alt text](./img/image-1.png)
 
 ---
 ### 단계3: Validate the installation by running our Hello app
