@@ -46,7 +46,7 @@ streamlit run ex-04.py
 ![alt text](image-4.png)
 
 ---
-### 단계5: Page Link 
+## [Multi Pages](https://docs.streamlit.io/develop/api-reference/widgets/st.page_link) 
 - `pages 폴더`가 존재하면, 자동으로 Multi Page로 인식을 함 
 ```shell
 your-repository/
