@@ -166,6 +166,7 @@ Django에서는 REST API를 위한 프레임워크가 존재합니다. 이를 DR
 
 
 # 배포 
+- https://wikidocs.net/6630
 - https://nerogarret.tistory.com/45
 
 
