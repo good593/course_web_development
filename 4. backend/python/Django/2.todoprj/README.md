@@ -17,12 +17,25 @@ DATABASES = {
 }
 ```
 
-# root 사용자 생성 
+# Django 관리자 페이지 
+### Admin 계정 
+- admin 생성 
 ```shell
-python manage.py createsuperuser
+python manage.py createsuperuser 
 ```
+- admin 계정 비번 변경 
+```shell
+python manage.py changepassword admin
+```
+### Model 등록 
+- 생성한 app의 admin.py
+```python
+from django.contrib import admin
+from .models import todo
 
-
+# Register your models here.
+admin.site.register(todo)
+```
 
 
 # 참고문서 

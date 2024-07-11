@@ -79,8 +79,18 @@ STATICFILES_DIRS = (STATIC_PATH,)
 ```
 
 # models 적용 및 서버 기동 
+### 1.마이그레이션(migration)
+- 테이블 및 필드의 생성, 삭제, 변경 등과 같은 스키마 정보에 대한 변경사항을 저장(기억)
+- app 폴더 아래에 migrations 폴더에 마이그레이션 정보 저장 
 ```shell
 $ python manage.py makemigrations 
+```
+### 2.Database에 마이그레이션 정보 반영 
+- 마이크레이션에 저장된 스키마 정보를 이용하여 Database의 테이블 생성/삭제/변경 진행 
+```shell
 $ python manage.py migrate
+```
+### 3.server 실행 
+```shell
 $ python manage.py runserver
 ```
