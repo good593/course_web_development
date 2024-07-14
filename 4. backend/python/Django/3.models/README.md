@@ -1,8 +1,52 @@
-# mysql 적용
-- mysql 드라이버 설치
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# MySQL 적용
+- create_db_user_of_mysql.sql 참고 
+
+---
+### 단계1: 데이터베이스 생성
+```sql
+create database django_db;
+show databases;
+```
+![alt text](image.png)
+
+---
+### 단계2: 사용자 계정 생성
+```sql
+use mysql;
+
+create user 'django_root'@localhost identified by 'django_root1!';
+select * from user;
+```
+![alt text](image-1.png)
+
+---
+### 단계3: 사용자 권한 부여
+```sql
+grant all privileges on django_db.* to 'django_root'@localhost;
+flush privileges; -- 새로운(수정된) 권한 적용 
+```
+![alt text](image-2.png)
+
+---
+### 단계4: mysql 드라이버 설치
 ```shell
 $ (.venv) pip install mysqlclient
 ```
+![alt text](image-3.png)
+
+---
+### 단계5: django with mysql
 - config/settings.py에 mysql 설정 추가 
 ```python
 DATABASES = {
@@ -17,7 +61,10 @@ DATABASES = {
 }
 ```
 
+---
 # Django 관리자 페이지 
+
+---
 ### Admin 계정 
 - admin 생성 
 ```shell

@@ -114,6 +114,13 @@ $ (.venv) python manage.py runserver
 ![alt text](./img/image-9.png)
 
 ---
+### 단계8: admin 계정 비번 변경 
+```shell
+$ (.venv) python manage.py changepassword admin
+```
+![alt text](./img/image-17.png)
+
+---
 # 관리자 페이지에서 사용자 생성하기  
 
 ---
