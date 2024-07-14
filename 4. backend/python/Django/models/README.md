@@ -25,7 +25,7 @@ show databases;
 ```sql
 use mysql;
 
-create user 'django_root'@localhost identified by 'django_root1!';
+create user 'django_root'@'%' identified by 'django_root1!';
 select * from user;
 ```
 ![alt text](image-1.png)
@@ -33,7 +33,7 @@ select * from user;
 ---
 ### 단계3: 사용자 권한 부여
 ```sql
-grant all privileges on django_db.* to 'django_root'@localhost;
+grant all privileges on django_db.* to 'django_root'@'%';
 flush privileges; -- 새로운(수정된) 권한 적용 
 ```
 ![alt text](image-2.png)
@@ -41,7 +41,7 @@ flush privileges; -- 새로운(수정된) 권한 적용
 ---
 ### 단계4: mysql 드라이버 설치
 ```shell
-$ (.venv) pip install mysqlclient
+$ (.venv) pip install pymysql
 ```
 ![alt text](image-3.png)
 
@@ -49,6 +49,9 @@ $ (.venv) pip install mysqlclient
 ### 단계5: django with mysql
 - config/settings.py에 mysql 설정 추가 
 ```python
+import pymysql 
+pymysql.install_as_MySQLdb()
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -62,10 +65,42 @@ DATABASES = {
 ```
 
 ---
+# [Models](https://docs.djangoproject.com/ko/5.0/topics/db/models/) 
+- 모델은 데이터에 대한 단 하나의 정보의 소스입니다. 
+- 모델은 저장하고 있는 데이터의 필수적인 필드와 동작을 포함하고 있습니다. 
+- 일반적으로, 각각의 모델은 하나의 데이터베이스 테이블에 매핑됩니다.
+
+---
+### 단계1: todo 생성 
+- todoList.models.py
+```python
+from django.db import models
+from django.contrib.auth.models import User
+
+# Create your models here.
+class todo(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    todo_name = models.CharField(max_length=1000)
+    status = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.todo_name
+```
+---
+### 단계2: 마이그레이션(migration)
+- 테이블 및 필드의 생성, 삭제, 변경 등과 같은 스키마 정보에 대한 변경사항을 저장(기억)
+- app 폴더 아래에 migrations 폴더에 마이그레이션 정보 저장 
+```shell
+$ (.venv) python manage.py makemigrations 
+```
+
+
+
+---
 # Django 관리자 페이지 
 
 ---
-### Admin 계정 
+### 단계1: Admin 계정 
 - admin 생성 
 ```shell
 python manage.py createsuperuser 
@@ -74,7 +109,9 @@ python manage.py createsuperuser
 ```shell
 python manage.py changepassword admin
 ```
-### Model 등록 
+
+---
+### 단계2: Model 등록 
 - 생성한 app의 admin.py
 ```python
 from django.contrib import admin
@@ -84,7 +121,7 @@ from .models import todo
 admin.site.register(todo)
 ```
 
-
+---
 # 참고문서 
 ### 유튜브 동영상
 - https://www.youtube.com/watch?v=EpqVtxTyTT8&list=PL8Loxdz4U5rqhjG3xAeE5SAmeeJJ5zQY0&index=2
