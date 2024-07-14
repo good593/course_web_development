@@ -163,8 +163,7 @@ Django에서는 REST API를 위한 프레임워크가 존재합니다. 이를 DR
 - https://jamanbbo.tistory.com/43
 - https://blog.nerdfactory.ai/2021/02/24/creating-an-api-&-collecting-html-elements-with-django-rest-framework.html
 
-
-
+---
 # 배포 
 - https://wikidocs.net/6630
 - https://nerogarret.tistory.com/45

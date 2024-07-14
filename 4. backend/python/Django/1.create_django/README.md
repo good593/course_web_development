@@ -1,4 +1,15 @@
-# 가상환경 만들자
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+### 단계1: 가상환경 만들자
 1. cd 프로젝트폴더
 2. py -3.11 -m venv .venv 
 3. .venv/Script/activate 
@@ -7,14 +18,18 @@
 6. (.venv) pip install django-cors-headers
 7. (.venv) pip install djangorestframework
 
-# 장고 프로젝트 생성
+---
+### 단계2: 장고 프로젝트 생성
 1. (.venv) mkdir 프로젝트명 
 2. (.venv) cd 프로젝트명 
 3. (.venv) django-admin startproject config . 
 
-# 장고 앱 생성 
+---
+### 단계3: 장고 앱 생성 
 1. (.venv) cd 프로젝트명 
 2. (.venv) python manage.py startapp 앱명 
+
+---
 3. config/settings.py에 앱 설정 추가 
 ```python
 INSTALLED_APPS = [
@@ -29,11 +44,14 @@ INSTALLED_APPS = [
 ]
 ```
 
-# templates 설정
+---
+### 단계4: templates 설정
 1. (.venv) cd 프로젝트명 
 2. (.venv) mkdir templates 
 3. (.venv) cd templates
 4. (.venv) mkdir 앱명
+
+---
 5. config/settings.py에 templates path 설정 추가 
 ```python
 TEMPLATES = [
@@ -53,7 +71,8 @@ TEMPLATES = [
 ]
 ```
 
-# static 설정
+---
+### 단계5: static 설정
 1. (.venv) cd 프로젝트명 
 2. (.venv) mkdir static 
 3. (.venv) cd static
@@ -67,6 +86,8 @@ TEMPLATES = [
 {% load static %}
     <script type="text/javascript" src="{% static 'js/index.js' %}"></script>
 ```
+
+---
 6. config/settings.py에 static path 설정 추가 
 ```python
 import os 
@@ -78,19 +99,8 @@ STATIC_PATH = os.path.join(
 STATICFILES_DIRS = (STATIC_PATH,)
 ```
 
-# models 적용 및 서버 기동 
-### 1.마이그레이션(migration)
-- 테이블 및 필드의 생성, 삭제, 변경 등과 같은 스키마 정보에 대한 변경사항을 저장(기억)
-- app 폴더 아래에 migrations 폴더에 마이그레이션 정보 저장 
+### 단계6: 서버 기동 
+- server 실행 
 ```shell
-$ python manage.py makemigrations 
-```
-### 2.Database에 마이그레이션 정보 반영 
-- 마이크레이션에 저장된 스키마 정보를 이용하여 Database의 테이블 생성/삭제/변경 진행 
-```shell
-$ python manage.py migrate
-```
-### 3.server 실행 
-```shell
-$ python manage.py runserver
+$ (.venv) python manage.py runserver
 ```
