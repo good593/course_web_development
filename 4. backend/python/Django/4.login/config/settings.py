@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+
 import os
 from pathlib import Path
 import pymysql 
@@ -22,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-qr2@x!_#4zb#zehs=+o^u+x&k!v(lzgrtc%(1+gt4^-s8$dz-l"
+SECRET_KEY = "django-insecure-j7c89zdrgqacr)mqh8abo3@ylez68^9)$q_rr4(!&hcvkes5*s"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -39,8 +40,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "todoList",
-    "user",
+    "todolist",
+    "user"
 ]
 
 MIDDLEWARE = [
@@ -75,15 +76,15 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
-# MySQL: https://velog.io/@devmin/Django-MySQL-Connect
+# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": "django_db", # 데이터베이스 이름 
-        "USER": "django_root", 
-        "PASSWORD": "django_root1!",
-        "HOST": "localhost",
-        "PORT": "3306"
+        "USER": "django_root", # 유저 아이디
+        "PASSWORD": "django_root1!", # 유저 비번
+        "HOST": "localhost", # host 주소
+        "PORT": "3306" # port 번호 
     }
 }
 
