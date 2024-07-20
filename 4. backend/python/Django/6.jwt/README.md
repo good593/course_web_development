@@ -264,4 +264,13 @@ $ (.venv) python manage.py runserver
 
 ![alt text](./img/image-10.png)
 
+---
+# 참고문서
 
+### Youtube
+- [Django API Authentication using JWT Tokens](https://www.youtube.com/watch?v=PUzgZrS_piQ&t=800s)
+- [Django Login using Access & Refresh Tokens](https://www.youtube.com/watch?v=l6Pfu4L_y_k)
+- [How to use JWT Authentication with Django Rest Framework](https://www.youtube.com/watch?v=BmOKr-cMhVA)
+### Github: 
+- [Django API Authentication using JWT Tokens](https://github.com/scalablescripts/django-auth)
+- [Django Login using Access & Refresh Tokens](https://github.com/scalablescripts/django-auth-refresh)
