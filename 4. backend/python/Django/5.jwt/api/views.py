@@ -21,7 +21,7 @@ class LoginView(APIView):
         username = request.data['username']
         password = request.data['password']
 
-        user = User.objects.filter(username=username).first()
+        user = User.objects.filter(email=username).first()
         if user is None:
             raise APIException('User not found')
         elif not user.check_password(password):

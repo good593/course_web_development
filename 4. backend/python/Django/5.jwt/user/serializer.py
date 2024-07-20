@@ -13,6 +13,7 @@ class UserSerializer(ModelSerializer):
 
     # user 생성 요청이 들어올 때, 비밀번호가 hashing 처리된 후 db에 저장 
     def create(self, validated_data):
+        print("[UserSerializer][create] Start")
         password = validated_data.pop('password', None)
         instance = self.Meta.model(**validated_data)
         if password is not None:

@@ -27,10 +27,7 @@ pip install django
 pip install djangorestframework
 pip install django-cors-headers
 pip install PyJWT
-pip install pyyaml uritemplate
 ```
-
----
 ### 단계2: 프로젝트 & 앱 생성
 ```shell
 django-admin startproject config . 
@@ -39,6 +36,7 @@ python manage.py startapp user
 python manage.py startapp authentication
 ```
 
+---
 ### 단계3: settings.py
 - 앱 추가 
 ```python
@@ -51,7 +49,10 @@ INSTALLED_APPS = [
     "authentication"
 ]
 ```
-
+- User Model 설정 
+```python
+AUTH_USER_MODEL = "user.User"
+```
 ---
 - CORS 크로스 도메인 설정
 ```python
@@ -62,10 +63,6 @@ MIDDLEWARE = [
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
-```
-- User Model 설정 
-```python
-AUTH_USER_MODEL = "user.User"
 ```
 - Django REST Framework 설정 
 ```python
@@ -190,5 +187,81 @@ $ (.venv) python manage.py migrate
 ```shell
 $ (.venv) python manage.py runserver
 ``` 
+
+---
+# 테스트 
+
+---
+### 단계1: register
+- http://127.0.0.1:8000/api/register/
+```json
+{
+    "name":"hello", "email":"hello@gmail.com", "password":"hello1234"
+}
+```
+
+---
+![alt text](./img/image.png)
+
+---
+- 결과 확인: 비밀번호는 보이지 않음!! 
+
+![alt text](./img/image-1.png)
+
+---
+- database에서 신규 회원 데이터 확인 
+    - 비밀번호는 hashing 처리!!
+
+![alt text](./img/image-2.png)
+
+---
+### 단계2: login on postman
+- http://127.0.0.1:8000/api/login/
+```json
+{
+    "username":"hello@gmail.com", "password":"hello1234"
+}
+```
+![alt text](./img/image-3.png)
+
+---
+- 결과 확인: access token 확인 
+
+![alt text](./img/image-4.png)
+
+---
+- 결과 확인: refresh token 확인 
+
+![alt text](./img/image-5.png)
+
+---
+### 단계3: hello world on postman
+- http://127.0.0.1:8000/api/hello-world/
+> 로그인 한 경우에만 접속 가능!!
+
+![alt text](./img/image-6.png)
+
+---
+- 결과 확인: 2분 이내로 호출해야함!!
+
+![alt text](./img/image-7.png)
+
+---
+- 결과 확인: 2분이 지났기 때문에 access token이 만료됨 
+
+![alt text](./img/image-8.png)
+
+---
+### 단계4: refresh token을 이용한 access token 생성
+- http://127.0.0.1:8000/api/refresh/
+
+![alt text](./img/image-9.png)
+
+---
+### 단계5: logout
+- http://127.0.0.1:8000/api/logout/
+> logout을 하면 쿠기에 있는 refresh token 삭제됨 
+
+![alt text](./img/image-10.png)
 
 
