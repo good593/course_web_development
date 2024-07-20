@@ -15,8 +15,6 @@ paginate: true
 3. .venv/Script/activate 
 4. (.venv) python -m pip install --upgrade pip 
 5. (.venv) pip install django
-6. (.venv) pip install django-cors-headers
-7. (.venv) pip install djangorestframework
 
 ---
 ### 단계2: 장고 프로젝트 생성
