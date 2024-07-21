@@ -123,5 +123,5 @@ $ (.venv) python manage.py runserver
 ``` 
 
 ---
-![w:700](image.png)
+![w:700](./img/image.png)
 

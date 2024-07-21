@@ -6,6 +6,11 @@
 </div>
 
 <div class="card-body">
+    {% if messages %}
+        {% for message in messages %}
+            <p style="color: #b22222;">{{message}}</p>
+        {% endfor %}
+    {% endif %}
     <form method="POST">
         {% csrf_token %}
         {% for field in form %} 
