@@ -13,7 +13,7 @@ const gameObj = {
 let mukchippaResult = {
     user: {
         score: 0,
-        status: false,
+        status: false, // true(공격상태)
         el: playerScoreEl
     },
     computer: {
@@ -44,26 +44,27 @@ function computerPlay() {
 }
 
 function mukchippa(result) {
+    // 비겼을때, 누구도 공격을 하지 않으면서, 비길때 
     if (!mukchippaResult['user']['status'] && !mukchippaResult['computer']['status']
             && result === "Tie") {
+        console.log(`${mukchippaResult['user']['status']} \ ${mukchippaResult['computer']['status']}`)
         return "Tie!"
     } 
-    else if (mukchippaResult['user']['status'] && result === "Tie") {
-        mukchippaResult['user']['score'] +=1;
-        mukchippaResult['user']['el'].textContent = mukchippaResult['user']['score'];
-        mukchippaResult['user']['status'] = false;
-        return "You win!"
+
+    // 초기화 
+    mukchippaResult['user']['status'] = false;
+    mukchippaResult['computer']['status'] = false;
+    // 승리할때, 
+    if (result === "Tie") {
+        let winner = mukchippaResult['user']['status'] ? 'user' : 'computer';
+        mukchippaResult[winner]['score']++;
+        mukchippaResult[winner]['el'].textContent = mukchippaResult[winner]['score'];
+        return winner === "user" ? resultEl.textContent + "> You win!" : resultEl.textContent + "> You lose!"
     }
-    else if (mukchippaResult['computer']['status'] && result === "Tie") {
-        mukchippaResult['computer']['score'] +=1;
-        mukchippaResult['computer']['el'].textContent = mukchippaResult['computer']['score'];
-        mukchippaResult['computer']['status'] = false;
-        return "You lose!"
-    }
+    // 공격권 변경!!
     else {
-        mukchippaResult['user']['status'] = false;
-        mukchippaResult['computer']['status'] = false;
         mukchippaResult[result]['status'] = true;
+        console.log(`${mukchippaResult['user']['status']} \ ${mukchippaResult['computer']['status']}`)
         return `${result} attack Start!`;
     }
 }
