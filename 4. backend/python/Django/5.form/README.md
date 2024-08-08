@@ -80,7 +80,7 @@ AUTH_USER_MODEL = "user.User"
 
 ---
 ### [Django Forms 처리 프로세스](https://developer.mozilla.org/ko/docs/Learn/Server-side/Django/Forms#django_%ED%8F%BC_%EC%B2%98%EB%A6%AC_%EA%B3%BC%EC%A0%95)
-![alt text](image.png)
+![alt text](./img/image.png)
 
 ---
 위의 다이어그램에 기반하여, Django 폼이 주요하게 다루는 것은 다음과 같다. :
@@ -139,7 +139,7 @@ class ContactForm(forms.Form):
 - Model Fields: Database Field들을 파이썬 클래스화 
 - Form Fields: HTML Form Field들을 파이썬 클래스화
 
-![alt text](image-1.png)
+![alt text](./img/image-1.png)
 
 ---
 # [로그인 유무를 이용한 사용자 접근 제한](https://docs.djangoproject.com/ko/5.0/topics/auth/default/#limiting-access-to-logged-in-users)
@@ -174,7 +174,7 @@ def task_list(request):
 
 ---
 # [template](https://docs.djangoproject.com/en/5.0/ref/templates/language/)
-![alt text](image-2.png)
+![alt text](./img/image-2.png)
 
 ---
 ### Model
