@@ -203,8 +203,10 @@ $ (.venv) python manage.py migrate
 $ (.venv) python manage.py runserver
 ``` 
 ---
+![w:800](./img/image-3.png)
 
-
+---
+![w:800](./img/image-4.png)
 
 ---
 # 참고문서 
