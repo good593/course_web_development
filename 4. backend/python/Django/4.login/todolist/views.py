@@ -4,7 +4,9 @@ from django.contrib import messages
 
 from .models import todo
 
-
+# login_required 
+# -> 참이될때, todo_list 함수가 실행!!
+# -> 거짓일때, redirect("localhost/user/login/")
 @login_required(login_url="/user/login/")
 def todo_list(request):
     if request.method == "POST":

@@ -17,8 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+# http://localhost:8000/user/login/
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    # localhost
     path("", include("todolist.urls")),
+    # localhost/admin/
+    path("admin/", admin.site.urls),
+    # localhost/user/
     path("user/", include("user.urls")),
 ]

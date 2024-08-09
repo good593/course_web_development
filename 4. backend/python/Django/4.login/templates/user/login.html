@@ -17,18 +17,20 @@
         <h2 style="color: #b22222;">{{message}}</h2>
     {% endfor %}
     {% endif %}
-    
+    <!-- http://localhost:8000/user/login/ -->
     <form action="#" method="POST">
     {% csrf_token %}
     <div class="input-box">
-        <input type="text" placeholder="Enter your username" required name="uname">
+        <!-- input 안에 name의 value값이 키로 / 사용자가 입력한 값이 데이터로 서버에 전달  -->
+        <input type="text" placeholder="Enter your username" required name="username">
     </div>
     <div class="input-box">
-        <input type="password" placeholder="Enter your password" required name="pass">
+        <input type="password" placeholder="Enter your password" required name="password">
     </div>
     <div class="policy">
     </div>
     <div class="input-box button">
+        <!-- type이 submit이라는 버튼이 클릭되면, form에 입력된 데이터를 서버로 전달  -->
         <input type="Submit" value="Login">
     </div>
     <div class="text">
