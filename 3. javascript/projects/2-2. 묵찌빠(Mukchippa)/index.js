@@ -68,8 +68,11 @@ function mukchippa(result) {
     }
     // 공격권 변경!!
     else {
+        initMukchippa()
+
         mukchippaResult[result]['status'] = true;
         console.log(`${mukchippaResult['user']['status']} \ ${mukchippaResult['computer']['status']}`)
+        
         return `${result} attack Start!`;
     }
 }
