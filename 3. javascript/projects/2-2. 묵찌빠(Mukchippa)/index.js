@@ -43,6 +43,12 @@ function computerPlay() {
     return choices[randomChoice];
 }
 
+function initMukchippa() {
+    // 초기화 
+    mukchippaResult['user']['status'] = false;
+    mukchippaResult['computer']['status'] = false;
+}
+
 function mukchippa(result) {
     // 비겼을때, 누구도 공격을 하지 않으면서, 비길때 
     if (!mukchippaResult['user']['status'] && !mukchippaResult['computer']['status']
@@ -51,14 +57,13 @@ function mukchippa(result) {
         return "Tie!"
     } 
 
-    // 초기화 
-    mukchippaResult['user']['status'] = false;
-    mukchippaResult['computer']['status'] = false;
     // 승리할때, 
     if (result === "Tie") {
         let winner = mukchippaResult['user']['status'] ? 'user' : 'computer';
         mukchippaResult[winner]['score']++;
         mukchippaResult[winner]['el'].textContent = mukchippaResult[winner]['score'];
+
+        initMukchippa()
         return winner === "user" ? resultEl.textContent + "> You win!" : resultEl.textContent + "> You lose!"
     }
     // 공격권 변경!!
