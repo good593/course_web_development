@@ -41,24 +41,27 @@ flush privileges; -- 새로운(수정된) 권한 적용
 ---
 ### 단계4: mysql 드라이버 설치
 ```shell
-$ (.venv) pip install pymysql
+$ (.venv) pip install mysqlclient
 ```
-![alt text](./img/image-3.png)
+- [install mysqlclient on Mac M1](https://stackoverflow.com/questions/76876823/cannot-install-mysqlclient-on-macos)
+```shell
+# Assume you are activating Python 3 venv
+$ brew install mysql-client pkg-config
+$ export PKG_CONFIG_PATH="/opt/homebrew/opt/mysql-client/lib/pkgconfig"
+$ (.venv) pip install mysqlclient
+```
 
 ---
 ### 단계5: django with mysql
 - config/settings.py에 mysql 설정 추가 
 ```python
-import pymysql 
-pymysql.install_as_MySQLdb()
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": "django_db", # 데이터베이스 이름 
         "USER": "django_root", # 유저 아이디
         "PASSWORD": "django_root1!", # 유저 비번
-        "HOST": "localhost", # host 주소
+        "HOST": "127.0.0.1", # host 주소
         "PORT": "3306" # port 번호 
     }
 }

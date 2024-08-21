@@ -30,6 +30,14 @@ pip install mysqlclient
 ```
 ![alt text](./img/image-3.png)
 
+- [install mysqlclient on Mac M1](https://stackoverflow.com/questions/76876823/cannot-install-mysqlclient-on-macos)
+```shell
+# Assume you are activating Python 3 venv
+$ brew install mysql-client pkg-config
+$ export PKG_CONFIG_PATH="/opt/homebrew/opt/mysql-client/lib/pkgconfig"
+$ (.venv) pip install mysqlclient
+```
+
 ---
 ### 단계3: MySQL 접속 정보설정(https://docs.streamlit.io/develop/api-reference/connections/secrets.toml)
 - 참고파일: `./.streamlit/secrets.toml`
