@@ -1,0 +1,54 @@
+<!-- prettier-ignore -->
+{% extends 'base/index.html' %} {% block title %}로그인 페이지{% endblock %} 
+{% block css %} 
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/login.css' %}" />
+<link
+	href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
+	rel="stylesheet" />
+{% endblock %}
+
+<!-- prettier-ignore -->
+{% block js %}
+{% load static %}
+<script src="{% static 'js/alert.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
+<!-- prettier-ignore -->
+{% block content %}
+<div class="wrapper">
+	<h2>Login</h2>
+	<br />
+
+	{% if messages %}
+	<div id="django-messages" style="display: none">
+		{% for message in messages %}
+		<div class="django-message" data-tag="{{ message.tags }}">{{ message|escapejs }}</div>
+		{% endfor %}
+	</div>
+	{% endif %}
+	<!-- http://localhost:8000/user/login/ -->
+	<form action="#" method="POST">
+		{% csrf_token %}
+		<div class="input-box">
+			<!-- input 안에 name의 value값이 키로 / 사용자가 입력한 값이 데이터로 서버에 전달  -->
+			<input type="text" placeholder="Enter your username" required name="username" />
+		</div>
+		<div class="input-box">
+			<input type="password" placeholder="Enter your password" required name="password" />
+		</div>
+		<div class="policy"></div>
+		<div class="input-box button">
+			<!-- type이 submit이라는 버튼이 클릭되면, form에 입력된 데이터를 서버로 전달  -->
+			<input type="Submit" value="Login" />
+		</div>
+		<div class="text">
+			<h3>Don't have an account? <a href="{% url 'user-register' %}">Register now</a></h3>
+		</div>
+		<div class="text">
+			<h3>Forgot Password? <a href="{% url 'user-login' %}">Reset</a></h3>
+		</div>
+	</form>
+</div>
+{% endblock %}

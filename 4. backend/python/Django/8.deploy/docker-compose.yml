@@ -1,23 +1,57 @@
-version: '3.7'
+version: '3.7' # 사용할 Docker Compose 파일 버전
 
-services:
-  django_gunicorn:
-    volumes:
-      - static:/static
-    env_file:
-      - .env
-    build:
-      context: .
-    ports:
-      - "8000:8000"
-  nginx:
-    build: ./nginx_server
-    volumes:
-      - static:/static
-    ports:
-      - "80:80"
-    depends_on:
-      - django_gunicorn
+services: # 컨테이너 서비스 정의
+    mysql_server: # MySQL 데이터베이스 서버
+        image: mysql # 공식 MySQL 이미지를 사용
+        container_name: mysql_server
+        volumes:
+            - mysql_data:/var/lib/mysql # DB 데이터 파일을 영구 저장하기 위한 볼륨 매핑
+        command:
+            - --character-set-server=utf8mb4 # 기본 문자셋을 utf8mb4로 설정 (이모지 지원)
+            - --collation-server=utf8mb4_unicode_ci # 기본 정렬(collation) 방식 설정
+        environment: # MySQL 서버 초기 설정 환경 변수
+            MYSQL_ROOT_PASSWORD: root # 루트 계정 비밀번호
+            MYSQL_DATABASE: django_db # 기본 생성할 데이터베이스 이름
+            MYSQL_USER: django_root # 추가로 생성할 사용자 계정
+            MYSQL_PASSWORD: r1234 # 추가 사용자 비밀번호
+        ports:
+            - '3306:3306' # 로컬 포트 3306 ↔ 컨테이너 포트 3306 매핑 (MySQL 기본 포트)
+        networks:
+            - compose_net # 커스텀 네트워크에 연결 (다른 서비스와 통신 가능)
 
-volumes:
-  static:
+    django_gunicorn: # Django + Gunicorn 애플리케이션 서버
+        container_name: django_gunicorn
+        restart: always # 컨테이너가 죽으면 항상 재시작
+        volumes:
+            - static:/static # static 파일 저장소를 공유
+        env_file:
+            - .env # 환경 변수 파일(.env) 로드
+        build:
+            context: . # 현재 폴더(.)에 있는 Dockerfile을 빌드
+        ports:
+            - '8000:8000' # 로컬 포트 8000 ↔ 컨테이너 포트 8000 매핑
+        depends_on:
+            - mysql_server # MySQL 서버가 켜진 후에 Django 실행
+        networks:
+            - compose_net # 동일 네트워크(compose_net)로 연결 (MySQL, nginx와 통신 가능)
+
+    nginx: # Nginx 웹 서버
+        container_name: nginx
+        build: ./nginx_server # nginx_server 폴더에 있는 Dockerfile을 빌드
+        volumes:
+            - static:/static # static 파일을 nginx가 읽을 수 있도록 연결
+        ports:
+            - '80:80' # 로컬 포트 80 ↔ 컨테이너 포트 80 매핑 (HTTP 기본 포트)
+        depends_on:
+            - django_gunicorn # Django 서버가 켜진 후에 Nginx를 실행
+        networks:
+            - compose_net # 동일 네트워크(compose_net)로 연결
+
+volumes: # 영구 저장소 설정
+    mysql_data: # MySQL 데이터 영구 저장용 볼륨
+    static: # Django static 파일 공유용 볼륨
+
+networks: # 서비스끼리 통신할 수 있게 하는 가상 네트워크 설정
+    compose_net:
+        name: django_net # 네트워크 이름을 'django_net'으로 명시
+        driver: bridge # 기본 브리지 네트워크 사용 (컨테이너 간 통신 가능)

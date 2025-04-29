@@ -1,14 +1,18 @@
-# https://hub.docker.com/layers/library/python/3.12-alpine/images/sha256-07728be3c9b53172e16c2eb6917e31775a8b349d22c5c85adeb4b94d960647a5
-FROM python:3.12-alpine
+FROM python:3.12
 
-RUN pip install --upgrade pip
-
-COPY ./requirements.txt .
-RUN pip install -r requirements.txt
-
+# 로컬의 django_server 폴더를 컨테이너의 /app 폴더로 복사합니다.
 COPY ./django_server /app
 
+# entrypoint.sh 스크립트를 컨테이너의 /app/entrypoint.sh로 복사합니다.
+COPY ./entrypoint.sh /app/entrypoint.sh
+
+# 작업 디렉토리를 /app으로 설정합니다.
 WORKDIR /app
 
-COPY ./entrypoint.sh /
-ENTRYPOINT ["sh", "/entrypoint.sh"]
+# pip을 최신 버전으로 업그레이드하고,
+# requirements.txt에 명시된 패키지를 설치합니다.
+RUN pip install --upgrade pip \
+    && pip install -r /app/requirements.txt
+
+# 컨테이너가 시작될 때 entrypoint.sh를 실행합니다.
+ENTRYPOINT [ "sh", "/app/entrypoint.sh" ]

@@ -1,9 +1,8 @@
 from django.urls import path
-
-from .views import index, todolist
+from .views import todolist, update, delete
 
 urlpatterns = [
-    path("", index, name="todolist-index"),
-    path("todolist/", todolist, name="todolist-todolist"),
-    path("todolist/<option>", todolist, name="todolist-option")
+    path('', todolist, name='todolist-todolist'),
+    path('update/<int:todo_id>', update, name='todolist-update'),
+    path('delete/<int:todo_id>', delete, name='todolist-delete'),
 ]
