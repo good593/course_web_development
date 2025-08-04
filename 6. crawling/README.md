@@ -107,6 +107,22 @@ paginate: true
 ![alt text](./img/image-7.png)
 
 ---
+## [Playwright](https://playwright.dev/)
+- 마이크로소프트에서 만든 웹 브라우저 자동화 도구
+- Python, JavaScript, Java, C# 등 여러 언어 지원
+- 웹페이지 테스트, 스크래핑, 자동화 작업에 사용
+
+---
+### Playwright vs Selenium
+| 용도                                 | 추천 도구          |
+| ---------------------------------- | -------------- |
+| 복잡한 크로스 브라우저 테스트 + 모바일 Safari까지 필요 | **Playwright** |
+| 다양한 언어 지원, 레거시 코드 유지               | **Selenium**   |
+| 최신 웹앱 자동화, CI/CD 테스트 속도 중요         | **Playwright** |
+| 오래된 자동화 환경 유지보수                    | **Selenium**   |
+
+
+---
 # 주요 크롤링 모듈(라이브러리)
 ### [requests](https://www.daleseo.com/python-requests/)
 - 파이썬 HTTP 통신에 사용되는 모듈
@@ -116,7 +132,13 @@ paginate: true
 - HTML, XML, JSON 등 파일의 구문을 분석하는 모듈
 - 설치방법: pip install beautifulsoup4
 
+---
 ### [selenium](https://gorokke.tistory.com/8)
 - 웹 브라우저를 이용하는 자동화 프로그램입니다.
 - 설치방법: pip install selenium
+
+### [playwright](https://playwright.dev/python/docs/intro)
+- 웹 브라우저를 이용하는 자동화 프로그램입니다.
+- 설치방법: pip install playwright
+- 브라우저 driver 설치방법: playwright install chromium 
 
