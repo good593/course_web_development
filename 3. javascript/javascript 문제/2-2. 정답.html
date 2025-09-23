@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>시맨틱 레이아웃</title>
+
+  <!-- [1] Bootstrap CSS 추가 
+       - Bootstrap은 CSS와 JS로 이루어진 UI 라이브러리입니다.
+       - 아래 링크를 head 안에 넣으면 Bootstrap의 CSS 기능을 바로 사용할 수 있습니다.
+       - "CDN" 방식으로 불러와서 별도의 파일 다운로드 없이 바로 사용 가능.
+  -->
+  <link 
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
+    rel="stylesheet">
+
+  <!-- [2] 반응형 웹 설정
+       - 모바일에서 화면이 기기에 맞게 조정되도록 하는 meta 태그 (Bootstrap 기본 요구사항)
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body class="bg-light"> <!-- body 전체 배경을 연한 회색(bg-light)으로 설정 -->
+
+  <!-- ================================
+       [Header 영역]
+       - 상단 제목과 메뉴(navbar) 배치
+       - Bootstrap의 Navbar 컴포넌트 활용
+     ================================ -->
+  <header class="bg-primary text-white">
+    <div class="container py-3">
+      <!-- 블로그 제목 -->
+      <h1 class="mb-3">나의 블로그</h1>
+
+      <!-- 메뉴 영역 -->
+      <!-- Navbar는 기본적으로 가로 메뉴를 만들어줌 -->
+      <nav class="navbar navbar-expand-sm navbar-dark">
+        <ul class="navbar-nav">
+          <!-- 메뉴 항목(nav-item) -->
+          <li class="nav-item">
+            <a class="nav-link active" href="#home">홈</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#about">소개</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#contact">연락처</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ================================
+       [Main 영역]
+       - Bootstrap의 Grid 시스템을 사용하여
+         본문(article)과 사이드바(aside)를 나란히 배치
+     ================================ -->
+  <main class="container my-4">
+    <div class="row">
+      <!-- 본문: 화면에서 8칸 차지 -->
+      <article class="col-md-8">
+        <div class="card mb-4">
+          <!-- card-body: 카드 안쪽의 기본 영역 -->
+          <div class="card-body">
+            <h2 class="card-title">오늘의 이야기</h2>
+            <p class="card-text">
+              오늘은 HTML 시맨틱 태그를 공부했습니다. 매우 유익한 시간이었습니다.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 사이드바: 화면에서 4칸 차지 -->
+      <aside class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="card-title">관련 링크</h2>
+            <ul class="list-group">
+              <li class="list-group-item">
+                <a href="#">HTML5 공식 문서</a>
+              </li>
+              <li class="list-group-item">
+                <a href="#">웹 접근성 가이드</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- ================================
+       [Footer 영역]
+       - 아래쪽 저작권 정보
+       - text-center로 가운데 정렬
+     ================================ -->
+  <footer class="bg-dark text-white text-center py-3">
+    <p class="mb-0">저작권 © 2025 나의 블로그</p>
+  </footer>
+
+  <!-- [3] Bootstrap JS 추가 (선택 사항)
+       - 메뉴 같은 일부 Bootstrap 기능은 JS가 필요함.
+       - 여기서는 메뉴 확장 같은 기능을 사용하지 않지만,
+         기본적으로 넣어두는 것을 권장.
+  -->
+  <script 
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+  </script>
+  <script src="2-3. script.js"></script>
+
+</body>
+</html>

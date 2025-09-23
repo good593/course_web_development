@@ -1,0 +1,107 @@
+/* 페이지 전체 스타일 */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 20px;
+  margin: 0;
+  gap: 15px;
+}
+
+/* 버튼 스타일 */
+.button-group {
+  margin-bottom: 10px;
+}
+button {
+  padding: 8px 14px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+}
+button:hover {
+  background-color: #f1f3ff;
+  border-color: #888;
+}
+
+/* 테이블 기본 스타일 */
+table {
+  border-collapse: collapse;
+  min-width: 500px;
+  background-color: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+caption {
+  text-align: left;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 15px;
+  background-color: #ffffff;
+}
+thead,
+tbody {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+thead tr,
+tbody tr {
+  display: flex;
+  width: 100%;
+}
+thead th {
+  background-color: #f1f3ff;
+  text-align: center;
+  padding: 12px;
+  font-weight: bold;
+  flex: 1;
+}
+tbody th,
+tbody td {
+  border-top: 1px solid #ddd;
+  padding: 12px;
+  text-align: center;
+  flex: 1;
+}
+tbody th {
+  font-weight: bold;
+  background-color: #f8f9fa;
+}
+thead th:first-child,
+tbody th:first-child {
+  flex: 1.2;
+}
+
+/* 선택된 셀 스타일 */
+td.selected,
+th.selected {
+  background-color: #ffeeba !important;
+  outline: 3px solid #f0ad4e;
+}
+
+/* 반응형 */
+@media (max-width: 600px) {
+  table {
+    min-width: 100%;
+  }
+  thead th,
+  tbody td,
+  tbody th {
+    font-size: 0.9rem;
+    padding: 8px;
+  }
+  button {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+}

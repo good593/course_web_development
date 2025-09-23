@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>회원가입 폼</title>
+  <!-- Tailwind CSS CDN 불러오기 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <!-- 
+    body에 적용한 클래스:
+    bg-gray-100 : 전체 배경을 연한 회색으로 설정
+    flex : flexbox 레이아웃 사용
+    items-center : 세로 방향 가운데 정렬
+    justify-center : 가로 방향 가운데 정렬
+    min-h-screen : 화면 전체 높이를 최소 높이로 설정
+  -->
+
+  <form action="#" method="post" 
+        class="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
+    <!-- 
+      form에 적용한 클래스:
+      bg-white : 폼 배경을 흰색으로 설정
+      p-6 : 안쪽 여백(padding)을 6단위(24px 정도)로 설정
+      rounded-lg : 모서리를 둥글게
+      shadow-md : 그림자 효과 추가
+      w-full max-w-sm : 화면이 작아지면 100% 너비, 최대는 small 크기(약 24rem)
+    -->
+
+    <fieldset>
+      <legend class="text-xl font-bold mb-4">회원가입</legend>
+      <!-- 
+        text-xl : 글자 크기를 크게
+        font-bold : 글자를 굵게
+        mb-4 : 아래쪽 여백(margin bottom) 추가
+      -->
+
+      <!-- 이름 입력 -->
+      <label for="name" class="block mb-1 font-medium">이름</label>
+      <!-- 
+        block : 라벨을 한 줄 차지(줄바꿈)
+        mb-1 : 입력창과의 간격을 작게 설정
+        font-medium : 글씨 두께 중간 정도
+      -->
+      <input id="name" name="name" type="text" required placeholder="홍길동"
+             class="w-full border border-gray-300 rounded p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <!-- 
+        w-full : 가로 전체 너비 차지
+        border border-gray-300 : 옅은 회색 테두리
+        rounded : 모서리 둥글게
+        p-2 : 안쪽 여백
+        mb-4 : 아래쪽 간격
+        focus:outline-none : 기본 파란 테두리 제거
+        focus:ring-2 focus:ring-blue-500 : 입력창 선택 시 파란 테두리(효과)
+      -->
+
+      <!-- 이메일 입력 -->
+      <label for="email" class="block mb-1 font-medium">이메일</label>
+      <input id="email" name="email" type="email" required placeholder="example@example.com"
+             class="w-full border border-gray-300 rounded p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+      <!-- 비밀번호 입력 -->
+      <label for="password" class="block mb-1 font-medium">비밀번호</label>
+      <input id="password" name="password" type="password" required minlength="8" placeholder="최소 8자 이상"
+             class="w-full border border-gray-300 rounded p-2 mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+      <!-- 회원가입 버튼 -->
+      <button type="submit" 
+              class="w-full bg-blue-500 text-white font-semibold py-2 rounded hover:bg-blue-600 transition">
+        회원가입
+      </button>
+      <!-- 
+        w-full : 버튼이 가로 전체 차지
+        bg-blue-500 : 파란색 배경
+        text-white : 흰색 글씨
+        font-semibold : 글씨 두께 중간 이상
+        py-2 : 위아래 여백
+        rounded : 모서리 둥글게
+        hover:bg-blue-600 : 마우스 올리면 색 진해짐
+        transition : 색 변경이 부드럽게
+      -->
+    </fieldset>
+  </form>
+  <script src="3-3. script.js"></script>
+</body>
+</html>
