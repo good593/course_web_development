@@ -1,12 +1,17 @@
-from django.urls import path
-from .views import todo_list, delete_task, update_task
+from django.urls import path 
 
-# localhost
+from .views import (
+    search_todolist,
+    delete_todo,
+    update_todo
+)
+
+# http://127.0.0.1:8000/*
 urlpatterns = [
-    # localhost
-    path("", todo_list, name="todo-list"),
-    # localhost/delete-task/task
-    path("delete-task/<str:task>", delete_task, name="delete-task"),
-    # localhost/update-task/task
-    path("update-task/<str:task>", update_task, name="update-task"),
+    # http://127.0.0.1:8000/
+    path("", search_todolist, name="todolist"),
+    # http://127.0.0.1:8000/delete/id
+    path("delete/<int:id>", delete_todo, name="delete-task"),
+    # http://127.0.0.1:8000/update/id
+    path("update/<int:id>", update_todo, name="update-task"),
 ]

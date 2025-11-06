@@ -27,6 +27,8 @@ paginate: true
 ```shell
 $ (.venv) python manage.py makemigrations 
 ```
+
+---
 - Database에 마이그레이션 정보 반영 
     - 마이크레이션에 저장된 스키마 정보를 이용하여 Database의 테이블 생성/삭제/변경 진행 
 ```shell

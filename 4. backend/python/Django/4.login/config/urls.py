@@ -2,7 +2,7 @@
 URL configuration for config project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.2/topics/http/urls/
+    https://docs.djangoproject.com/en/5.2/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -17,12 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-# http://localhost:8000/user/login/
+# http://127.0.0.1:8000/*
 urlpatterns = [
-    # localhost
-    path("", include("todolist.urls")),
-    # localhost/admin/
-    path("admin/", admin.site.urls),
-    # localhost/user/
+    # http://127.0.0.1:8000/admin/*
+    path('admin/', admin.site.urls),
+    # http://127.0.0.1:8000/user/*
     path("user/", include("user.urls")),
+    # http://127.0.0.1:8000/*
+    path("", include("todolist.urls")),
+    
 ]
