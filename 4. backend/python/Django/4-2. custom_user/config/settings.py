@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$tz)#*+%l+2pcx-gw4)exyot0*(g%+i_ho!u7d_h$*lq^gqf!='
+SECRET_KEY = 'django-insecure-!cw7o3-6!xu3s5&s-tzh8k+t=*8)97n%hlv@%c1^v%^k$qrtby'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -49,7 +49,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'user.middleware.AuthRedirectMiddleware', # 커스텀 미들웨어 마지막 아래에 추가
+    'user.middleware.AuthRedirectMiddleware' # 마지막 아래에 추가
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -133,4 +133,4 @@ STATICFILES_DIRS = (STATIC_PATH, )
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = "user.CustomUser" # 커스텀 사용자 클래스 정의
+AUTH_USER_MODEL = "user.CustomUser"

@@ -1,15 +1,15 @@
 from django.urls import path 
 
 from .views import (
-    UserRegister, UserLogin, UserLogout 
+    UserRegister, UserLogin, UserLogout
 )
 
-# /user/*
+# http://localhost:8000/user/*
 urlpatterns = [
-    # /user/register/
+    # http://localhost:8000/user/register/
     path("register/", UserRegister.as_view(), name="user-register"),
-    # /user/login/
+    # http://localhost:8000/user/login/
     path("login/", UserLogin.as_view(), name="user-login"),
-    # /user/logout/
-    path("logout/", UserLogout.as_view(), name="user-logout"),
+    # http://localhost:8000/user/logout/
+    path("logout/", UserLogout.as_view(), name="user-logout")
 ]
