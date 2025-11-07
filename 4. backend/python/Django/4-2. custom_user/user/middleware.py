@@ -5,6 +5,12 @@ from django.urls import reverse
 class AuthRedirectMiddleware:
     """
     로그인 상태에 따라 접근을 제어하는 미들웨어
+    [중요] settings.py에 추가해야함 
+        MIDDLEWARE = [
+            ...
+            'django.contrib.auth.middleware.AuthenticationMiddleware',
+            'user.middleware.AuthRedirectMiddleware', # 커스텀 미들웨어 마지막 아래에 추가
+        ]
     """
     def __init__(self, get_response):
         self.get_response = get_response

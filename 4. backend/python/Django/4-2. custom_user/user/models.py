@@ -61,7 +61,11 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
-    """DB에 생성될 테이블 정보"""
+    """
+    DB에 생성될 테이블 정보
+    [중요] settings.py에 추가해야함 
+        AUTH_USER_MODEL = "user.CustomUser" # 커스텀 사용자 클래스 정의
+    """
     objects = CustomUserManager()
 
     email = models.EmailField(max_length=500, unique=True, null=False)
