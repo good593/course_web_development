@@ -1,11 +1,20 @@
-from django.urls import path
+from django.urls import path 
 
-from .views import task_list, task_detail, task_create, task_update, task_delete
+from .views import (
+    SelectTaskList, GetTaskDetail,
+    InsertTask, UpdateTask, DeleteTask
+)
 
+# http:localhost:8000/*
 urlpatterns = [
-    path('', task_list, name='task-list'),
-    path('task-create/', task_create, name='task-create'),
-    path('task-detail/<int:pk>', task_detail, name='task-detail'),
-    path('task-update/<int:pk>', task_update, name='task-update'),
-    path('task-delete/<int:pk>', task_delete, name='task-delete')
+    # http:localhost:8000/
+    path("", SelectTaskList.as_view(), name="task-list"),
+    # http:localhost:8000/task-create/
+    path("task-create/", InsertTask.as_view(), name="task-create"),
+    # http:localhost:8000/task-detail/pk
+    path("task-detail/<int:pk>", GetTaskDetail.as_view(), name="task-detail"),
+    # http:localhost:8000/task-update/pk
+    path("task-update/<int:pk>", UpdateTask.as_view(), name="task-update"),
+    # http:localhost:8000/task-delete/pk
+    path("task-delete/<int:pk>", DeleteTask.as_view(), name="task-delete"),
 ]

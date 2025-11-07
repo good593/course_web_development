@@ -1,8 +1,5 @@
 {% extends 'base/index.html' %} 
 {% block content %}
-{% load static %}
-<script type="text/javascript" src="{% static 'js/task_detail.js' %}"></script>
-
 <div class="header-bar">
     <a href="{% url 'task-list' %}">&#8592; Back</a>
 </div>
@@ -18,4 +15,6 @@
     </div>
 </div>
 
+{% load static %}
+<script type="text/javascript" src="{% static 'js/task_detail.js' %}"></script>
 {% endblock content %}

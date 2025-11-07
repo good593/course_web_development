@@ -1,10 +1,15 @@
-from django.urls import path
-from django.contrib.auth.views import LogoutView
+from django.urls import path 
 
-from .views import user_login, user_register
+from .views import (
+    UserRegister, UserLogin, UserLogout
+)
 
+# http:localhost:8000/user/*
 urlpatterns = [
-    path('login/', user_login, name='login'),
-    path('register/', user_register, name='register'),
-    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
+    # http:localhost:8000/user/login/
+    path("login/", UserLogin.as_view(), name="login"),
+    # http:localhost:8000/user/register/
+    path("register/", UserRegister.as_view(), name="register"),
+    # http:localhost:8000/user/logout/
+    path("logout/", UserLogout.as_view(), name="logout"),
 ]

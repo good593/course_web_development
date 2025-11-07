@@ -1,6 +1,5 @@
 {% extends 'base/index.html' %} 
 {% block content %}
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <div class="header-bar">
     <div>
         <h1>Hello {{request.user|title}}</h1>
@@ -53,4 +52,5 @@
     {% endfor %}
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 {% endblock content %}
