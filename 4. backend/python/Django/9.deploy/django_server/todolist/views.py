@@ -1,47 +1,112 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
+from django.views.generic.base import TemplateView
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from .models import todo
 
-# 조회 및 추가
-@login_required(login_url='user/login/')
-def todolist(request):
-    # 추가
-    if request.method == 'POST':
-        task = request.POST.get('task').strip()
-        
-        # 중복 체크
-        if todo.objects.filter(user=request.user, todo_name=task).exists():
-            messages.error(request, '이미 추가된 할 일입니다.')
-            return redirect('todolist-todolist')
-        
-        elif not len(task):
-            messages.error(request, '할 일을 입력하세요.')
-            return redirect('todolist-todolist')
-        
-        new_task = todo(user=request.user, todo_name=task)
-        new_task.save()
-        messages.success(request, '할 일이 추가되었습니다.')
-    
-    # 조회
-    todo_all = todo.objects.filter(user=request.user)
-    context = {
-        'todo_all': todo_all,
-    }
-    return render(request, 'todolist/todolist.html', context)
+from .forms import TaskForm
+from .services import (
+    select_tasks, 
+    count_not_completed_tasks,
+    get_task, delete_task
+)
 
-# 수정
-@login_required(login_url='user/login/')
-def update(request, todo_id):
-    todo.objects.filter(user=request.user, id=todo_id).update(status=True)
-    messages.success(request, '할 일이 완료되었습니다.')
-    
-    return redirect('todolist-todolist')
+# task 리스트 조회 화면 
+class SelectTaskList(TemplateView):
+    template_name = "todolist/task_list.html"
 
-# 삭제
-@login_required(login_url='user/login/')
-def delete(request, todo_id):
-    todo.objects.filter(user=request.user, id=todo_id).delete()
-    messages.success(request, '할 일이 삭제되었습니다.')
-    
-    return redirect('todolist-todolist')
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # 사용자의 입력 데이터 
+        context['search_input'] = self.request.GET.get("search-area", "")
+        # 사용자가 등록한 task list 조회 
+        context['taskList'] = select_tasks(
+            custom=self.request.user, 
+            search_input=context['search_input']
+        )
+        # 사용자가 등록한 task list 중 완료가 되지 않은 수 
+        context['cnt'] = count_not_completed_tasks(
+            custom=self.request.user
+        )
+        
+        return context
+
+# (하나의) task 상세 화면 
+class GetTaskDetail(TemplateView):
+    template_name = "todolist/task_detail.html"
+
+    def get_context_data(self, pk):
+        context = super().get_context_data()
+        context['task'] = get_task(
+            custom=self.request.user, id=pk
+        )
+        context['form'] = TaskForm(instance=context['task'])
+
+        return context
+
+# task 삭제 화면
+class DeleteTask(TemplateView):
+    template_name = "todolist/task_delete.html"
+
+    def get_context_data(self, pk):
+        context = super().get_context_data()
+        context['task'] = get_task(
+            custom=self.request.user, id=pk
+        )
+        return context
+
+    def post(self, request, pk):
+        if not delete_task(
+            custom=self.request.user, id=pk
+        ):
+            messages.error(request, f"알수없는 오류 발생으로 인해, 요청하신 task 삭제하지 못했습니다.")
+            
+        return redirect("task-list")
+
+# task 추가 화면
+class InsertTask(TemplateView):
+    template_name = "todolist/task_form.html"
+
+    def get_context_data(self):
+        context = super().get_context_data()
+        context['form'] = TaskForm()
+        return context 
+
+    def post(self, request):
+        form = TaskForm(request.POST)
+        if form.is_valid():                 # 검증성공 
+            task = form.save(commit=False)  # 아직 저장전...
+            task.custom = request.user      # 등록 유저 정보 추가..
+            task.save()                     # 데이터베이스에 저장 
+            return redirect("task-list")
+
+        messages.error(request, form.errors)
+        return redirect("task-create")
+             
+# task 수정 화면 
+class UpdateTask(TemplateView):
+    template_name = "todolist/task_form.html"
+
+    def get_context_data(self, pk):
+        context = super().get_context_data()
+        context['task'] = get_task(
+            custom=self.request.user, id=pk
+        )
+        context['form'] = TaskForm(instance=context['task'])
+        return context 
+
+    def post(self, request, pk):
+        one_task = get_task(
+            custom=self.request.user, id=pk
+        )
+
+        form = TaskForm(request.POST, instance=one_task)
+        if form.is_valid():                 # 검증성공 
+            task = form.save(commit=False)  # 아직 저장전...
+            task.custom = request.user      # 등록 유저 정보 추가..
+            task.save()                     # 데이터베이스에 저장 
+            return redirect("task-list")
+
+        messages.error(request, form.errors)
+        return redirect("task-create")
+
+ 
+

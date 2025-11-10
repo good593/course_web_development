@@ -72,7 +72,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = 'customUser' # 생성될 테이블명 
 
-    # 필수 & 유니크
+    # 인증/인가에 사용할 username 정의
     USERNAME_FIELD = 'name'  
 
     # 가입할 때, 추가적으로 필수로 받아야할 컬럼 리스트 
