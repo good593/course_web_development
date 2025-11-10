@@ -1,2 +1,4 @@
-django==5.2.8
-mysqlclient==2.2.7
+django==5.2.8                   # 장고 웹프레임워크
+mysqlclient==2.2.7              # 데이터베이스 커텍터 
+
+
