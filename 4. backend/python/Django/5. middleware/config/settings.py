@@ -20,12 +20,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!cw7o3-6!xu3s5&s-tzh8k+t=*8)97n%hlv@%c1^v%^k$qrtby'
+SECRET_KEY = 'django-insecure-jbkd@l(3$6@ph&bprwp#c#rnkhg0$ci1_&3nuwl#m!bce9o%nc'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -49,7 +49,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'user.middleware.AuthRedirectMiddleware' # 마지막 아래에 추가
+    'user.middleware.AuthRedirectMiddleware'
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -77,12 +77,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': "django",
-        'USER':'root',
-        'PASSWORD':'root1234',
-        'HOST':'127.0.0.1',
-        'PORT':'3306',
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "django_db", # 데이터베이스 이름 
+        "USER": "django_root", 
+        "PASSWORD": "django_root1!",
+        "HOST": "127.0.0.1", # host 주소
+        "PORT": "3306"
     }
 }
 
@@ -117,16 +117,15 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 STATIC_PATH = os.path.join(
-    BASE_DIR, 'static'
-)
+    BASE_DIR, "static"
+)  # concatena a pasta static a variavel instanciada base_dir que aponta para a raiz do projeto
 
-STATICFILES_DIRS = (STATIC_PATH, )
+STATICFILES_DIRS = (STATIC_PATH,)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

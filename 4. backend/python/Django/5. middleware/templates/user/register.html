@@ -1,13 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends 'base/index.html' %}
+
+{% block title %}
     <title>Register</title>
+{% endblock title %}
+
+{% block css %}
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/register.css' %}">
-</head>
-<body>
+{% endblock css %}
+
+{% block content %}
     <div class="wrapper">
         <h2>Register Page</h2>
         <br>
@@ -42,5 +44,4 @@
             </h3>
         </div>
     </div>
-</body>
-</html>
+{% endblock content %}

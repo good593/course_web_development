@@ -1,43 +1,35 @@
-from django.shortcuts import redirect, render
-from django.views.generic.base import TemplateView
-from django.views import View 
+from django.shortcuts import render, redirect
 from django.contrib import messages
 
-from .models import Todo
+from .services import insert_todo, select_todos, get_todo
 
 # Create your views here.
-class SelectTodoList(TemplateView):
-    template_name = "todolist/todo.html"
+def select_todolist(request):
+    try:
+        # 저장
+        if request.method == "POST":
+            todo_name = request.POST.get("task").strip()
+            insert_todo(todo_name, request.user) 
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['todos'] = Todo.objects.filter(
-            user=self.request.user
+        # 조회
+        return render(
+            request, "todolist/todo.html",
+            {
+                "todos": select_todos(request.user)
+            }
         )
-        return context
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect("todolist") 
 
-    def post(self, request):
-        task = request.POST.get('task').strip()
-        
-        if Todo.objects.filter(
-            user=request.user, todo_name=task
-        ).exists():
-            messages.error(request, f"{task}는 이미 존재합니다.")
-            return redirect("todolist")
-        
-        new_todo = Todo(user=request.user, todo_name=task)
-        new_todo.save()
-        return redirect("todolist")
+def update_todo(request, id):
+    todo = get_todo(request.user, id)
+    todo.status = True 
+    todo.save()
+    return redirect("todolist") 
 
-class DeleteTodo(View):
-    def get(self, request, id):
-        one_todo = Todo.objects.get(user=request.user, id=id)
-        one_todo.delete()
-        return redirect("todolist")
+def delete_todo(request, id):
+    todo = get_todo(request.user, id)
+    todo.delete()
+    return redirect("todolist") 
 
-class UpdateTodo(View):
-    def get(self, request, id):
-        one_todo = Todo.objects.get(user=request.user, id=id)
-        one_todo.status = True
-        one_todo.save()
-        return redirect("todolist")
