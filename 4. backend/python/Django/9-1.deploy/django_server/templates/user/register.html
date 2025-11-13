@@ -1,0 +1,47 @@
+{% extends 'base/index.html' %}
+
+{% block title %}
+    <title>Register</title>
+{% endblock title %}
+
+{% block css %}
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/register.css' %}">
+{% endblock css %}
+
+{% block content %}
+    <div class="wrapper">
+        <h2>Register Page</h2>
+        <br>
+
+        {% if messages %}
+            {% for message in messages %}
+                <p style="color:red">{{message}}</p>
+            {% endfor %}
+        {% endif %}
+
+        <!-- http://localhost:8000/user/register/ -->
+        <form method="POST">
+            {% csrf_token %}
+            <div class="input-box">
+                <input type="text" placeholder="Create a username" required name="username">
+            </div>
+            <div class="input-box">
+                <input type="password" placeholder="Create a password" required name="password">
+            </div>
+            <div class="input-box">
+                <input type="email" placeholder="Enter your email" name="email">
+            </div>
+            <div class="input-box button">
+                <!-- submit button 클릭시, username & password & (옵션) email를 서버로 전달  -->
+                <input type="submit" value="Register">
+            </div>
+        </form>
+        <div class="text">
+            <h3>
+                Do you have an account?
+                <a href="{% url 'user-login' %}">Login Now</a>
+            </h3>
+        </div>
+    </div>
+{% endblock content %}

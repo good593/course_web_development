@@ -1,0 +1,44 @@
+{% extends 'base/index.html' %}
+
+{% block title %}
+    <title>Login Page</title>
+{% endblock title %}
+
+{% block css %}
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+{% endblock css %}
+
+{% block content %}
+    <div class="wrapper">
+        <h2>Loging Page</h2>
+        <br>
+
+        {% if messages %}
+            {% for message in messages %}
+                <p style="color:red">{{message}}</p>
+            {% endfor %}
+        {% endif %}
+
+        <!-- http://localhost:8000/user/login/ -->
+        <form method="POST" action="">
+            {% csrf_token %}
+            <div class="input-box">
+                <input type="text" placeholder="Enter your username" required name="username">
+            </div>
+            <div class="input-box">
+                <input type="password" placeholder="Enter your password" required name="password">
+            </div>
+            <div class="input-box button">
+                <!-- submit button 클릭시, username & password를 서버로 전달  -->
+                <input type="submit" value="Login">
+            </div>
+        </form>
+        <div class="text">
+            <h3>
+                Don't have an account?
+                <a href="{% url 'user-register' %}">Register Now</a>
+            </h3>
+        </div>
+    </div>
+{% endblock content %}
