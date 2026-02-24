@@ -139,6 +139,8 @@ paginate: true
 
 ### [playwright](https://playwright.dev/python/docs/intro)
 - 웹 브라우저를 이용하는 자동화 프로그램입니다.
-- 설치방법: pip install playwright
-- 브라우저 driver 설치방법: playwright install chromium 
+- 설치방법
+  - [윈도우 C++ 설치](https://aka.ms/vc14/vc_redist.x64.exe)
+  - pip install pytest-playwright
+  - 브라우저 driver 설치방법: playwright install chromium 
 
