@@ -13,6 +13,7 @@ RUN pip install -r requirements.txt
 
 ENV SECRET_KEY='django-insecure-jbkd@l(3$6@ph&bprwp#c#rnkhg0$ci1_&3nuwl#m!bce9o%nc'
 
-COPY run.sh .
-RUN chmod +x run.sh
-CMD ["./run.sh"]
+COPY ./run.sh /app/run.sh
+RUN sed -i 's/\r$//' /app/run.sh \
+    && chmod +x /app/run.sh
+CMD ["./app/run.sh"]

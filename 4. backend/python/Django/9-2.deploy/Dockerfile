@@ -5,6 +5,8 @@ COPY ./django_server /app
 
 # entrypoint.sh 스크립트를 컨테이너의 /app/entrypoint.sh로 복사합니다.
 COPY ./entrypoint.sh /app/entrypoint.sh
+RUN sed -i 's/\r$//' /app/entrypoint.sh \
+    && chmod +x /app/entrypoint.sh
 
 # 작업 디렉토리를 /app으로 설정합니다.
 WORKDIR /app
