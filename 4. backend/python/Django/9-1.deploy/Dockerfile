@@ -16,4 +16,4 @@ ENV SECRET_KEY='django-insecure-jbkd@l(3$6@ph&bprwp#c#rnkhg0$ci1_&3nuwl#m!bce9o%
 COPY ./run.sh /app/run.sh
 RUN sed -i 's/\r$//' /app/run.sh \
     && chmod +x /app/run.sh
-CMD ["./app/run.sh"]
+CMD ["/app/run.sh"]
