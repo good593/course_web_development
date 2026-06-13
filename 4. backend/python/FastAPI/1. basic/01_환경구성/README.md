@@ -1,6 +1,4 @@
-# 1교시 — 환경 구성 & FastAPI 첫 실행
-
-**소요시간:** 90분 (이론 30분 + 실습 60분)
+# 환경 구성 & FastAPI 첫 실행
 
 ---
 
@@ -95,121 +93,60 @@ def create_item(item: Item):   # ← 이것만으로 검증 + 문서화 완료
 
 ## 3. 실습 — 환경 구성
 
-### 3-1. 가상환경 생성
+### 3-1. 프로젝트 준비
 
 ```bash
-# 프로젝트 폴더 생성
-mkdir my_api
-cd my_api
+# 실습 폴더로 이동
+cd 01_환경구성
 
-# 가상환경 생성
-python -m venv venv
+# Python 버전 확인
+python --version
+```
 
-# 가상환경 활성화
-## Windows
-venv\Scripts\activate
+이 예제는 `uv` 기반 프로젝트로 구성되어 있다.
 
-## Mac / Linux
-source venv/bin/activate
+| 파일 | 설명 |
+|------|------|
+| `.python-version` | 실습에 사용할 Python 버전 (`3.12`) |
+| `pyproject.toml` | 프로젝트 메타데이터와 의존성 정의 |
+| `uv.lock` | 재현 가능한 설치를 위한 잠금 파일 |
 
-# 가상환경 활성화 확인 (프롬프트 앞에 (venv) 표시)
-(venv) $
+새 프로젝트에서 같은 환경을 직접 만들 경우:
+
+```bash
+uv init
+uv python pin 3.12
 ```
 
 ### 3-2. 패키지 설치
 
 ```bash
-pip install fastapi uvicorn[standard]
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
+uv sync
 
-# 설치 확인
-pip list | grep -E "fastapi|uvicorn"
+# 설치된 패키지 확인
+uv pip list
 ```
 
-### 3-3. 프로젝트 구조 생성
+현재 예제의 주요 의존성:
 
-```
-my_api/
-├── main.py          ← 진입점
-├── routers/         ← 라우터 모듈 (나중에 사용)
-│   └── __init__.py
-├── models/          ← 데이터 모델 (나중에 사용)
-│   └── __init__.py
-└── schemas/         ← Pydantic 스키마 (나중에 사용)
-    └── __init__.py
-```
+| 패키지 | 버전 |
+|--------|------|
+| `fastapi` | `0.115.12` |
+| `uvicorn[standard]` | `0.34.3` |
+
+새 프로젝트에서 직접 추가할 경우:
 
 ```bash
-# 폴더 및 파일 생성
-mkdir routers models schemas
-type nul > routers\__init__.py   # Windows
-type nul > models\__init__.py
-type nul > schemas\__init__.py
+uv add "fastapi==0.115.12" "uvicorn[standard]==0.34.3"
 ```
 
-### 3-4. Hello World 작성
+
+### 3-3. Hello World 작성
 
 `main.py`를 열고 아래 내용을 작성한다:
 
 ```python
-from fastapi import FastAPI
-
-app = FastAPI(
-    title="My First API",
-    description="FastAPI 입문 강의 실습",
-    version="0.1.0",
-)
-
-
-@app.get("/")
-def read_root():
-    return {"message": "Hello, FastAPI!"}
-
-
-@app.get("/hello/{name}")
-def hello(name: str):
-    return {"message": f"안녕하세요, {name}님!"}
-```
-
-### 3-5. 서버 실행
-
-```bash
-uvicorn main:app --reload
-
-# 출력 예시
-# INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-# INFO:     Started reloader process
-```
-
-| 옵션 | 설명 |
-|------|------|
-| `main` | `main.py` 파일 |
-| `app` | 파일 안의 FastAPI 인스턴스 변수명 |
-| `--reload` | 파일 저장 시 자동 재시작 (개발용) |
-
-### 3-6. 자동 문서 확인
-
-브라우저에서 아래 주소를 열어본다:
-
-| URL | 설명 |
-|-----|------|
-| `http://127.0.0.1:8000` | API 루트 |
-| `http://127.0.0.1:8000/docs` | **Swagger UI** (대화형 문서) |
-| `http://127.0.0.1:8000/redoc` | ReDoc (읽기 전용 문서) |
-| `http://127.0.0.1:8000/openapi.json` | OpenAPI 스펙 원본 |
-
-> **Swagger UI에서 해보기**
-> 1. `/hello/{name}` 엔드포인트 클릭
-> 2. "Try it out" 버튼 클릭
-> 3. name에 자신의 이름 입력
-> 4. "Execute" 클릭 → 응답 확인
-
----
-
-## 4. 완성 코드
-
-```python
-# 01_환경구성/main.py
-
 from fastapi import FastAPI
 
 app = FastAPI(
@@ -238,25 +175,19 @@ def get_info():
     }
 ```
 
----
+### 3-4. 서버 실행
 
-## 5. 핵심 요약
+```bash
+uv run uvicorn main:app --reload --port 8001
 
-| 개념 | 설명 |
+# 출력 예시
+# INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+# INFO:     Started reloader process
+```
+
+| 옵션 | 설명 |
 |------|------|
-| `FastAPI()` | 애플리케이션 인스턴스 생성 |
-| `@app.get("/경로")` | GET 메서드 라우트 등록 |
-| `uvicorn main:app --reload` | 개발 서버 실행 |
-| `/docs` | 자동 생성 Swagger 문서 |
-
----
-
-## 6. 퀴즈
-
-1. REST API에서 URI에 동사를 넣지 않는 이유는 무엇인가?
-2. ASGI와 WSGI의 핵심 차이는?
-3. `--reload` 옵션은 운영 환경에서 사용해야 하는가?
-
----
-
-**다음 교시** → [2교시: HTTP Method 이해](../02_HTTP_Method/강의자료.md)
+| `uv run` | 프로젝트 가상환경에서 명령 실행 |
+| `main` | `main.py` 파일 |
+| `app` | 파일 안의 FastAPI 인스턴스 변수명 |
+| `--reload` | 파일 저장 시 자동 재시작 (개발용) |
