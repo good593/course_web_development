@@ -1,6 +1,17 @@
-# 2교시 — HTTP Method 이해
-
-**소요시간:** 90분 (이론 45분 + 실습 45분)
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# [HTTP Method 이해](https://developer.mozilla.org/ko/docs/Web/HTTP/Reference/Methods)
+- HTTP(Hypertext Transfer Protocol)는 클라이언트와 서버 간 통신을 위한 통신 규칙 세트 또는 프로토콜입니다. 
+- HTTP는 요청 메서드를 정의하여, 주어진 리소스에 수행하길 원하는 행동을 나타냅니다.
 
 ---
 
@@ -10,22 +21,17 @@ HTTP 메서드는 서버에게 **"무엇을 하고 싶은지"** 전달하는 동
 
 | 메서드 | 역할 | 멱등성 | Body |
 |--------|------|--------|------|
-| **GET** | 조회 | ✅ | ❌ |
-| **POST** | 생성 | ❌ | ✅ |
-| **PUT** | 전체 수정 | ✅ | ✅ |
-| **PATCH** | 부분 수정 | ❌ | ✅ |
-| **DELETE** | 삭제 | ✅ | ❌ |
-
-> **멱등성(Idempotent)** : 같은 요청을 여러 번 보내도 결과가 동일한 성질
-> - `GET /users/1` → 몇 번 호출해도 같은 유저 반환 ✅
-> - `POST /users` → 호출할 때마다 새 유저 생성 ❌
+| **GET** | 조회 | O | X |
+| **POST** | 생성 | X | O |
+| **PUT** | 전체 수정 | O | O |
+| **PATCH** | 부분 수정 | X | O |
+| **DELETE** | 삭제 | O | X |
 
 ---
-
 ## 2. GET vs POST 핵심 차이
 
+---
 ### GET
-
 ```
 GET /search?keyword=fastapi&page=1 HTTP/1.1
 Host: api.example.com
@@ -37,8 +43,8 @@ Host: api.example.com
 - URL 길이 제한 있음 (~2000자)
 - **민감한 정보 전송 금지** (URL이 로그에 남음)
 
+---
 ### POST
-
 ```
 POST /users HTTP/1.1
 Host: api.example.com
@@ -46,7 +52,6 @@ Content-Type: application/json
 
 {
     "name": "홍길동",
-    "email": "hong@example.com",
     "password": "secret123"
 }
 ```
@@ -57,6 +62,7 @@ Content-Type: application/json
 - 데이터 크기 제한 없음
 - 민감한 정보 전송 가능
 
+---
 ### 비교 요약
 
 | 항목 | GET | POST |
@@ -66,14 +72,13 @@ Content-Type: application/json
 | 보안 | URL에 노출 | Body에 숨김 |
 | 캐싱 | 가능 | 불가 |
 | 목적 | 조회 | 생성/처리 |
-| 멱등성 | ✅ | ❌ |
+| 멱등성 | O | X |
 
 ---
+## [3. HTTP 상태 코드](https://developer.mozilla.org/ko/docs/Web/HTTP/Reference/Status)
+> 서버가 클라이언트에게 **"결과가 어떻게 됐는지"** 알려주는 숫자 코드
 
-## 3. HTTP 상태 코드
-
-서버가 클라이언트에게 **"결과가 어떻게 됐는지"** 알려주는 숫자 코드
-
+---
 ### 2xx — 성공
 
 | 코드 | 이름 | 언제 사용 |
@@ -82,6 +87,7 @@ Content-Type: application/json
 | **201** | Created | 리소스 생성 성공 (POST) |
 | **204** | No Content | 성공했지만 응답 본문 없음 (DELETE) |
 
+---
 ### 4xx — 클라이언트 오류
 
 | 코드 | 이름 | 언제 사용 |
@@ -92,6 +98,7 @@ Content-Type: application/json
 | **404** | Not Found | 리소스 없음 |
 | **422** | Unprocessable Entity | 데이터 검증 실패 (FastAPI 기본) |
 
+---
 ### 5xx — 서버 오류
 
 | 코드 | 이름 | 언제 사용 |
@@ -100,7 +107,6 @@ Content-Type: application/json
 | **503** | Service Unavailable | 서버 일시 중단 |
 
 ---
-
 ## 4. HTTP Request 구성 요소
 
 ```
@@ -115,6 +121,7 @@ Content-Type: application/json
 }
 ```
 
+---
 | 구성 요소 | 예시 | 설명 |
 |-----------|------|------|
 | **Method** | `POST` | 행위 |
@@ -125,51 +132,19 @@ Content-Type: application/json
 | **Body** | `{"product_id": 10, ...}` | 전송 데이터 |
 
 ---
-
-## 5. 실습 — curl / HTTPie로 직접 요청하기
+## 5. 실습
 
 ### 실습 서버 실행
 
 ```bash
-uvicorn main:app --reload
+uv run uvicorn main:app --reload --port 8001
 ```
 
-### curl 사용법
+---
+### [Swagger UI에서 요청 분석](https://swagger.io/tools/swagger-ui/)
+> Swagger UI는 개발자가 RESTful API 문서를 시각적으로 확인하고, 별도의 테스트 도구(예: Postman) 없이도 웹 화면에서 직접 API를 호출하고 테스트할 수 있도록 해주는 오픈소스 프레임워크입니다.
 
-```bash
-# GET 요청
-curl http://127.0.0.1:8000/
-
-# GET + Query Parameter
-curl "http://127.0.0.1:8000/search?keyword=fastapi"
-
-# POST 요청 (JSON Body)
-curl -X POST http://127.0.0.1:8000/items \
-  -H "Content-Type: application/json" \
-  -d '{"name": "노트북", "price": 1500000}'
-
-# 응답 상태 코드 확인
-curl -I http://127.0.0.1:8000/
-```
-
-### HTTPie 사용법 (더 직관적)
-
-```bash
-pip install httpie
-
-# GET
-http GET http://127.0.0.1:8000/
-
-# GET + Query Parameter
-http GET http://127.0.0.1:8000/search keyword==fastapi
-
-# POST (자동으로 Content-Type: application/json 설정)
-http POST http://127.0.0.1:8000/items name="노트북" price:=1500000
-```
-
-### Swagger UI에서 요청 분석
-
-1. `http://127.0.0.1:8000/docs` 접속
+1. `http://127.0.0.1:8001/docs` 접속
 2. 엔드포인트 클릭 → **Parameters** 확인 (Path / Query 구분)
 3. **Request body** 섹션 확인
 4. "Try it out" → "Execute" → **Response** 분석
@@ -178,30 +153,37 @@ http POST http://127.0.0.1:8000/items name="노트북" price:=1500000
    - Response Body
 
 ---
-
 ## 6. REST URI 설계 규칙
 
 ### 좋은 URI vs 나쁜 URI
 
 ```
 # 리소스는 명사, 복수형 사용
-✅ GET  /articles
-✅ GET  /articles/1
-✅ POST /articles
+[OK]  GET  /articles
+[OK]  GET  /articles/1
+[OK]  POST /articles
 
-❌ GET  /getArticles
-❌ GET  /article/1       (단수)
-❌ POST /createArticle
-
-# 계층 구조 표현
-✅ GET /users/42/orders        (42번 유저의 주문 목록)
-✅ GET /users/42/orders/7      (42번 유저의 7번 주문)
-
-# 필터/정렬/페이지는 Query Parameter
-✅ GET /articles?category=tech&sort=latest&page=2
-❌ GET /articles/tech/latest/page/2
+[BAD] GET  /getArticles
+[BAD] GET  /article/1       (단수)
+[BAD] POST /createArticle
 ```
 
+---
+### 계층 구조 표현
+```
+# 계층 구조 표현
+[OK]  GET /users/42/orders        (42번 유저의 주문 목록)
+[OK]  GET /users/42/orders/7      (42번 유저의 7번 주문)
+```
+
+### 필터/정렬/페이지는 Query Parameter
+```
+# 필터/정렬/페이지는 Query Parameter
+[OK]  GET /articles?category=tech&sort=latest&page=2
+[BAD] GET /articles/tech/latest/page/2
+```
+
+---
 ### 상태 코드와 메서드 조합
 
 ```
@@ -212,28 +194,3 @@ PUT    /users/99       → 200 OK
 DELETE /users/99       → 204 No Content
 POST   /users (중복)   → 400 Bad Request 또는 409 Conflict
 ```
-
----
-
-## 7. 핵심 요약
-
-| 개념 | 핵심 포인트 |
-|------|------------|
-| GET | 조회, URL에 데이터, 멱등성 있음 |
-| POST | 생성, Body에 데이터, 멱등성 없음 |
-| 상태 코드 | 200(성공), 201(생성), 400(클라이언트오류), 404(없음), 422(검증실패) |
-| URI 설계 | 명사+복수형, 계층 구조, 필터는 Query Parameter |
-
----
-
-## 8. 퀴즈
-
-1. `GET /users/1`을 100번 호출하면 서버 데이터가 변경되는가?
-2. 로그인 API는 GET과 POST 중 어떤 메서드를 써야 하는가? 이유는?
-3. 유저 생성 성공 시 적절한 상태 코드는?
-4. `GET /deleteUser/42`의 문제점은?
-
----
-
-**이전 교시** ← [1교시: 환경 구성](../01_환경구성/강의자료.md)  
-**다음 교시** → [3교시: GET 엔드포인트 구현](../03_GET_엔드포인트/강의자료.md)
