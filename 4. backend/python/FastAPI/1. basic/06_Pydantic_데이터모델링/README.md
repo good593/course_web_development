@@ -1,5 +1,17 @@
-# 6교시 — Pydantic 기반 데이터 모델링
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# Pydantic 기반 데이터 모델링
 
+---
 ## 학습 목표
 
 - Pydantic v2 BaseModel을 활용해 복잡한 데이터 구조를 선언할 수 있다
@@ -7,20 +19,14 @@
 - field_validator / model_validator로 커스텀 검증 로직을 작성할 수 있다
 - 입력/출력 스키마를 분리해 안전한 API를 설계할 수 있다
 
-## 이번 교시의 범위
-
-6교시는 **Pydantic 모델 자체를 설계하는 시간**입니다.  
-필드 타입, `Field()` 제약, `field_validator`, `model_validator`, 입력/출력 스키마 분리를 다룹니다.
-
-FastAPI가 요청을 받아 422 에러를 만들고, 예외 응답을 통일하고, 비즈니스 규칙을 API 계층에서 처리하는 흐름은 7교시에서 다룹니다.
 
 ---
 
-## 1. Pydantic v2란?
+## [1. Pydantic란?](https://pydantic.dev/docs/validation/latest/get-started/)
+- FastAPI는 내부적으로 **Pydantic**을 사용해 요청 데이터를 검증하고 직렬화합니다.  
+- v2는 Rust 기반 코어(`pydantic-core`)로 재작성되어 v1 대비 약 5~50배 빠릅니다.
 
-FastAPI는 내부적으로 **Pydantic**을 사용해 요청 데이터를 검증하고 직렬화합니다.  
-v2는 Rust 기반 코어(`pydantic-core`)로 재작성되어 v1 대비 약 5~50배 빠릅니다.
-
+---
 ```python
 from pydantic import BaseModel
 
@@ -37,7 +43,6 @@ class User(BaseModel):
 - Swagger 스키마 자동 생성
 
 ---
-
 ## 2. Field() — 필드 수준 제약
 
 ```python
@@ -59,6 +64,7 @@ class Product(BaseModel):
     sku: str = Field(pattern=r"^[A-Z]{2}-\d{4}$")  # 정규식
 ```
 
+---
 ### 자주 쓰는 Field 옵션
 
 | 옵션 | 의미 | 적용 타입 |
@@ -74,9 +80,9 @@ class Product(BaseModel):
 | `pattern` | 정규식 | 문자열 |
 
 ---
-
 ## 3. 타입 시스템 활용
 
+---
 ### Optional — 선택 필드
 
 ```python
@@ -90,6 +96,7 @@ class UpdateUser(BaseModel):
 
 `Optional[X]`는 `Union[X, None]`의 축약입니다.
 
+---
 ### Union — 여러 타입 허용
 
 ```python
@@ -102,6 +109,7 @@ class Notification(BaseModel):
 
 Python 3.10 이상에서는 `str | int` 문법도 사용 가능합니다.
 
+---
 ### Literal — 허용 값 고정
 
 ```python
@@ -115,25 +123,20 @@ class Order(BaseModel):
 `Literal`은 enum 대신 간단하게 허용 값을 고정할 때 사용합니다.
 
 ---
-
 ## 4. 중첩 모델 (Nested Models)
 
 모델 안에 다른 모델을 필드로 사용할 수 있습니다.
 
 ```python
-from pydantic import BaseModel, Field
-from typing import List, Optional
-
 class Address(BaseModel):
     street: str
     city: str
-    zip_code: str = Field(pattern=r"^\d{5}$")
-    country: str = "KR"
+    ...
 
 class OrderItem(BaseModel):
     product_id: int
     quantity: int = Field(gt=0)
-    unit_price: float = Field(gt=0)
+    ...
 
 class Order(BaseModel):
     order_id: str
@@ -143,6 +146,7 @@ class Order(BaseModel):
     coupon_code: Optional[str] = None
 ```
 
+---
 ### 사용 예
 
 ```python
@@ -166,7 +170,6 @@ print(order.items[0].quantity)       # 2
 ```
 
 ---
-
 ## 5. field_validator — 필드 단위 커스텀 검증
 
 ```python
@@ -174,8 +177,6 @@ from pydantic import BaseModel, field_validator
 
 class User(BaseModel):
     username: str
-    password: str
-    age: int
 
     @field_validator("username")
     @classmethod
@@ -184,27 +185,11 @@ class User(BaseModel):
             raise ValueError("사용자명은 영문, 숫자, 밑줄(_)만 허용됩니다.")
         return v.lower()  # 반환값이 실제 저장될 값
 
-    @field_validator("password")
-    @classmethod
-    def password_strength(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("비밀번호는 8자 이상이어야 합니다.")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("비밀번호에 숫자가 포함되어야 합니다.")
-        return v
-
-    @field_validator("age")
-    @classmethod
-    def age_range(cls, v: int) -> int:
-        if not (0 <= v <= 150):
-            raise ValueError("나이는 0~150 사이여야 합니다.")
-        return v
+    ...
 ```
-
 > **v2 핵심 변경사항**: `@field_validator`는 반드시 `@classmethod`와 함께 사용하며, 첫 번째 파라미터는 `cls`입니다.
 
 ---
-
 ## 6. model_validator — 모델 전체 검증
 
 여러 필드를 교차로 검증할 때 사용합니다.
@@ -225,11 +210,10 @@ class DateRange(BaseModel):
         if end <= start:
             raise ValueError("종료일은 시작일보다 이후여야 합니다.")
         diff = (end - start).days
-        if diff > self.max_days:
-            raise ValueError(f"기간은 최대 {self.max_days}일까지 허용됩니다.")
-        return self
+        ...
 ```
 
+---
 ### mode 옵션
 
 | mode | 실행 시점 | 사용 목적 |
@@ -238,7 +222,6 @@ class DateRange(BaseModel):
 | `"before"` | 파싱 전 (raw dict 상태) | 입력 데이터 전처리 |
 
 ---
-
 ## 7. model_config — 모델 설정
 
 ```python
@@ -258,29 +241,14 @@ class StrictUser(BaseModel):
 ```
 
 ---
-
 ## 8. 입력/출력 스키마 분리 패턴
 
 API 설계에서 **입력(Input)**과 **출력(Output)**에 다른 필드 집합을 사용하는 패턴입니다.
 
 ```python
-from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime
-
-# ── 공통 기반 ──────────────────────────────────────
-class UserBase(BaseModel):
-    username: str = Field(min_length=3, max_length=50)
-    email: str
-
 # ── 생성 요청 (클라이언트 → 서버) ──────────────────
 class UserCreate(UserBase):
     password: str = Field(min_length=8)  # 입력에만 존재
-
-# ── 수정 요청 (전체 필드 선택적) ────────────────────
-class UserUpdate(BaseModel):
-    username: Optional[str] = Field(default=None, min_length=3)
-    email: Optional[str] = None
 
 # ── 응답 (서버 → 클라이언트) ────────────────────────
 class UserResponse(UserBase):
@@ -294,22 +262,6 @@ class UserResponse(UserBase):
 > `from_attributes=True`는 SQLAlchemy ORM 객체처럼 dict가 아닌 객체에서 모델을 생성할 때 필요합니다.
 
 ---
-
-## 9. 실습 — 상품 관리 API 모델 설계
-
-```python
-# 06_Pydantic_데이터모델링/main.py 참고
-```
-
-**실습 과제**:
-
-1. `Category` 중첩 모델을 만들고 `Product`에 연결하세요
-2. `price`가 `original_price`보다 클 수 없는 model_validator를 작성하세요
-3. `sku`가 `AA-0000` 형식(영문 대문자 2자리 + 숫자 4자리)인지 검증하세요
-4. `ProductCreate`와 `ProductResponse` 스키마를 분리하세요
-
----
-
 ## 핵심 정리
 
 | 도구 | 용도 |
