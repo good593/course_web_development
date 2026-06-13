@@ -1,15 +1,24 @@
-# 5교시 — 프로젝트 구조화 & 종합 실습
-
-**소요시간:** 90분 (이론 20분 + 실습 70분)
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# 프로젝트 구조화 & 종합 실습
 
 ---
-
 ## 1. APIRouter — 엔드포인트 분리
 
+---
 ### 왜 분리하는가?
 
 ```python
-# ❌ main.py가 커질수록 관리가 힘들어짐
+# main.py가 커질수록 관리가 힘들어짐
 app = FastAPI()
 
 @app.get("/users")
@@ -22,6 +31,7 @@ app = FastAPI()
 # ... 수십 개의 엔드포인트가 한 파일에
 ```
 
+---
 ### APIRouter로 분리
 
 ```python
@@ -43,6 +53,9 @@ def get_item(item_id: int): ...
 def create_item(): ...
 ```
 
+---
+> routers 코드 import
+
 ```python
 # main.py
 from fastapi import FastAPI
@@ -55,9 +68,9 @@ app.include_router(user.router)
 ```
 
 ---
-
 ## 2. 의존성 주입 (Dependency Injection) 맛보기
 
+---
 ### 공통 Query Parameter 재사용
 
 ```python
@@ -79,6 +92,7 @@ def get_users(page: dict = Depends(pagination)):
     ...
 ```
 
+---
 ### 간단한 인증 헤더 검사
 
 ```python
@@ -98,9 +112,9 @@ def admin_create_item(item: ItemCreate):
 ```
 
 ---
-
 ## 3. 종합 실습 — Todo API 완성
 
+---
 ### 프로젝트 구조
 
 ```
@@ -114,6 +128,7 @@ todo_api/
     └── todo.py
 ```
 
+---
 ### 3-1. 스키마 정의
 
 ```python
@@ -129,21 +144,10 @@ class TodoCreate(BaseModel):
     description: Optional[str] = Field(default=None, max_length=1000, description="상세 설명")
     priority: int = Field(default=2, ge=1, le=3, description="우선순위 (1=높음, 2=보통, 3=낮음)")
 
-
-class TodoResponse(BaseModel):
-    id: int
-    title: str
-    description: Optional[str]
-    priority: int
-    completed: bool
-    created_at: datetime
-
-
-class TodoListResponse(BaseModel):
-    total: int
-    items: list[TodoResponse]
+...
 ```
 
+---
 ### 3-2. 데이터 모델 (인메모리)
 
 ```python
@@ -170,21 +174,10 @@ class TodoDB:
         self._next_id += 1
         return todo
 
-    def get_all(self, skip: int = 0, limit: int = 10) -> list[dict]:
-        items = list(self._data.values())
-        return items[skip : skip + limit]
-
-    def get_by_id(self, todo_id: int) -> dict | None:
-        return self._data.get(todo_id)
-
-    def count(self) -> int:
-        return len(self._data)
-
-
-# 싱글턴 인스턴스 (애플리케이션 전체에서 공유)
-todo_db = TodoDB()
+...
 ```
 
+---
 ### 3-3. 라우터 구현
 
 ```python
@@ -208,27 +201,10 @@ def get_todos(skip: int = 0, limit: int = 10):
         items=todo_db.get_all(skip=skip, limit=limit),
     )
 
-
-@router.get("/{todo_id}", response_model=TodoResponse)
-def get_todo(todo_id: int):
-    """특정 할 일 조회"""
-    todo = todo_db.get_by_id(todo_id)
-    if not todo:
-        raise HTTPException(status_code=404, detail=f"Todo {todo_id} not found")
-    return todo
-
-
-@router.post("", response_model=TodoResponse, status_code=201)
-def create_todo(todo: TodoCreate):
-    """할 일 생성"""
-    new_todo = todo_db.create(
-        title=todo.title,
-        description=todo.description,
-        priority=todo.priority,
-    )
-    return new_todo
+...
 ```
 
+---
 ### 3-4. 메인 앱
 
 ```python
@@ -251,17 +227,10 @@ def read_root():
     return {"message": "Todo API에 오신 것을 환영합니다!", "docs": "/docs"}
 ```
 
-### 3-5. 실행
-
-```bash
-cd todo_api
-uvicorn main:app --reload
-```
-
 ---
-
 ## 4. API 동작 확인
 
+---
 ### Swagger UI에서 순서대로 테스트
 
 ```
@@ -288,7 +257,6 @@ uvicorn main:app --reload
 ```
 
 ---
-
 ## 5. 전체 프로젝트 파일 트리
 
 ```
@@ -305,6 +273,7 @@ todo_api/
     └── todo.py
 ```
 
+---
 각 레이어의 역할:
 
 | 레이어 | 파일 | 역할 |
@@ -315,50 +284,7 @@ todo_api/
 | 모델 | `models/todo.py` | 데이터 저장/조회 로직 |
 
 ---
-
-## 6. 다음 단계 로드맵
-
-```
-현재 위치
-    ↓
-[DB 연동]
-  - SQLite + SQLAlchemy
-  - Alembic 마이그레이션
-    ↓
-[인증 / 보안]
-  - JWT 토큰
-  - OAuth2 Password Flow
-  - bcrypt 비밀번호 해시
-    ↓
-[고급 기능]
-  - 미들웨어 (로깅, CORS)
-  - 백그라운드 태스크
-  - 파일 업로드
-  - WebSocket
-    ↓
-[배포]
-  - Docker 컨테이너화
-  - Nginx + Uvicorn
-  - CI/CD
-```
-
----
-
-## 7. 실습 확인 체크리스트
-
-- [ ] 프로젝트 폴더 구조 생성 완료
-- [ ] `schemas/todo.py` 스키마 정의 완료
-- [ ] `models/todo.py` 데이터 모델 구현 완료
-- [ ] `routers/todo.py` 3개 엔드포인트 구현 완료
-- [ ] `main.py`에서 라우터 등록 완료
-- [ ] GET /todos 목록 조회 동작 확인
-- [ ] GET /todos/{id} 단건 조회 + 404 처리 확인
-- [ ] POST /todos 생성 + 201 응답 확인
-- [ ] Swagger UI에서 전체 API 문서 확인
-
----
-
-## 8. 핵심 요약
+## 6. 핵심 요약
 
 | 개념 | 설명 |
 |------|------|
@@ -367,17 +293,3 @@ todo_api/
 | `tags` | Swagger UI 그룹화 |
 | `include_router` | 메인 앱에 라우터 등록 |
 | `Depends` | 공통 로직 재사용 (의존성 주입) |
-
----
-
-## 9. 최종 퀴즈
-
-1. `prefix="/todos"`와 `@router.get("")`이 합쳐지면 실제 경로는?
-2. `TodoDB` 클래스를 싱글턴으로 만든 이유는?
-3. DB 연동 시 `models/todo.py`에서 무엇이 바뀌어야 하는가?
-4. `tags=["todos"]`는 무엇에 영향을 주는가?
-
----
-
-**이전 교시** ← [4교시: POST 엔드포인트 구현](../04_POST_엔드포인트/강의자료.md)  
-**처음으로** ← [README](../README.md)
