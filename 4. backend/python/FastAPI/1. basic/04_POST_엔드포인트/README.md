@@ -1,15 +1,23 @@
-# 4교시 — POST 엔드포인트 구현
-
-**소요시간:** 90분 (이론 20분 + 실습 70분)
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# POST 엔드포인트 구현
 
 ---
-
 ## 1. Request Body와 Pydantic BaseModel
 
-> 2교시에서 배운 것처럼 POST는 데이터를 URL이 아닌 Body에 담습니다.
+> POST는 데이터를 URL이 아닌 Body에 담습니다.
 > FastAPI에서는 Pydantic BaseModel이 이 Body를 자동으로 받아 검증합니다.
 
-```
+```shell
 POST /items HTTP/1.1
 Content-Type: application/json
 
@@ -20,6 +28,7 @@ Content-Type: application/json
 }
 ```
 
+---
 ### BaseModel로 Body 스키마 정의
 
 ```python
@@ -32,6 +41,7 @@ class ItemCreate(BaseModel):
     in_stock: bool = True   # 기본값 있는 선택 필드
 ```
 
+---
 ```python
 @app.post("/items")
 def create_item(item: ItemCreate):
@@ -47,9 +57,9 @@ FastAPI가 자동으로 처리하는 것:
 - Swagger UI에 Body 스키마 자동 문서화
 
 ---
-
 ## 2. Field로 유효성 규칙 추가
 
+---
 ### 기본 Field 사용법
 
 ```python
@@ -77,6 +87,7 @@ class ItemCreate(BaseModel):
     )
 ```
 
+---
 ### 주요 Field 검증 옵션
 
 | 옵션 | 적용 타입 | 의미 |
@@ -90,8 +101,8 @@ class ItemCreate(BaseModel):
 | `le` | int/float | 이하 (less or equal) |
 | `default` | 모든 타입 | 기본값 |
 
+---
 ### 이메일 검증
-
 ```python
 from pydantic import BaseModel, EmailStr
 
@@ -103,15 +114,11 @@ class UserCreate(BaseModel):
 ```
 
 ---
-
 ## 3. 입력/출력 스키마 분리
 
 입력(요청)과 출력(응답)에 필요한 필드가 다른 경우 스키마를 분리한다.
 
 ```python
-from pydantic import BaseModel, Field
-from datetime import datetime
-
 # 입력 스키마 (클라이언트 → 서버)
 class ItemCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
@@ -127,38 +134,26 @@ class ItemResponse(BaseModel):
     category: str
     in_stock: bool
     created_at: datetime  # 서버가 생성
-
-# id, created_at은 클라이언트가 보내는 게 아니라
-# 서버가 생성해서 응답에 포함하는 값
 ```
 
 ---
-
 ## 4. 실습 — POST 엔드포인트 3종 구현
 
+---
 ### 4-1. 아이템 생성 API
 
 ```python
-# main.py
-
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from datetime import datetime
-
 app = FastAPI(title="POST 실습 API")
 
 # 인메모리 저장소
 items_db: dict[int, dict] = {}
 next_id = 1
 
-
 class ItemCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100, description="아이템 이름")
     price: float = Field(gt=0, description="가격 (0 초과)")
     category: str = Field(min_length=1, description="카테고리")
     in_stock: bool = Field(default=True, description="재고 여부")
-
 
 class ItemResponse(BaseModel):
     id: int
@@ -167,7 +162,6 @@ class ItemResponse(BaseModel):
     category: str
     in_stock: bool
     created_at: datetime
-
 
 @app.post("/items", response_model=ItemResponse, status_code=201)
 def create_item(item: ItemCreate):
@@ -179,17 +173,10 @@ def create_item(item: ItemCreate):
         if existing["name"] == item.name:
             raise HTTPException(status_code=400, detail=f"'{item.name}' 이름의 아이템이 이미 존재합니다")
 
-    new_item = {
-        "id": next_id,
-        **item.model_dump(),
-        "created_at": datetime.now(),
-    }
-    items_db[next_id] = new_item
-    next_id += 1
-
-    return new_item
+...
 ```
 
+---
 ```
 # 성공
 POST /items
@@ -206,40 +193,10 @@ POST /items (키보드 두 번째)
 → 400 Bad Request
 ```
 
+---
 ### 4-2. 유저 등록 API (이메일 검증)
 
 ```python
-from pydantic import EmailStr
-
-class UserCreate(BaseModel):
-    name: str = Field(min_length=2, max_length=50, description="이름 (2~50자)")
-    email: EmailStr = Field(description="이메일 주소")
-    password: str = Field(min_length=8, description="비밀번호 (8자 이상)")
-    age: Optional[int] = Field(default=None, ge=0, le=150, description="나이")
-
-
-class UserResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    age: Optional[int]
-    created_at: datetime
-    # password 없음 ← 응답에서 제외
-
-
-users_db: dict[int, dict] = {}
-next_user_id = 1
-
-
-def fake_hash_password(password: str) -> str:
-    """실습용 해시 함수입니다. 실제 서비스에서는 bcrypt 같은 검증된 해시를 사용하세요."""
-    return f"fakehashed:{password}"
-
-
-def verify_password(plain_password: str, password_hash: str) -> bool:
-    return fake_hash_password(plain_password) == password_hash
-
-
 @app.post("/users", response_model=UserResponse, status_code=201)
 def create_user(user: UserCreate):
     """유저 등록"""
@@ -265,6 +222,7 @@ def create_user(user: UserCreate):
     return new_user
 ```
 
+---
 ```
 # 성공
 POST /users
@@ -282,6 +240,7 @@ POST /users
 → 422 Unprocessable Entity
 ```
 
+---
 ### 4-3. 로그인 API (입력값 검증)
 
 ```python
@@ -321,10 +280,7 @@ def login(credentials: LoginRequest):
 ```
 
 ---
-
 ## 5. 422 에러 응답 분석
-
-FastAPI가 자동으로 반환하는 검증 실패 응답:
 
 ```json
 {
@@ -335,147 +291,17 @@ FastAPI가 자동으로 반환하는 검증 실패 응답:
             "msg": "Field required",
             "input": {"price": 100}
         },
-        {
-            "type": "greater_than",
-            "loc": ["body", "price"],
-            "msg": "Input should be greater than 0",
-            "input": -50,
-            "ctx": {"gt": 0}
-        }
+        ...
     ]
 }
 ```
-
 - `loc` : 오류 위치 (`body` → `필드명`)
 - `type` : 오류 종류
 - `msg` : 오류 메시지
 
 ---
 
-## 6. 완성 코드
-
-```python
-# 04_POST_엔드포인트/main.py
-
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List
-from datetime import datetime
-
-app = FastAPI(title="POST 실습 API", version="0.1.0")
-
-items_db: dict[int, dict] = {}
-users_db: dict[int, dict] = {}
-next_item_id = 1
-next_user_id = 1
-
-
-def fake_hash_password(password: str) -> str:
-    return f"fakehashed:{password}"
-
-
-def verify_password(plain_password: str, password_hash: str) -> bool:
-    return fake_hash_password(plain_password) == password_hash
-
-
-# ── 스키마 ──────────────────────────────────────────
-
-class ItemCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
-    price: float = Field(gt=0)
-    category: str = Field(min_length=1)
-    in_stock: bool = Field(default=True)
-
-class ItemResponse(BaseModel):
-    id: int
-    name: str
-    price: float
-    category: str
-    in_stock: bool
-    created_at: datetime
-
-class UserCreate(BaseModel):
-    name: str = Field(min_length=2, max_length=50)
-    email: EmailStr
-    password: str = Field(min_length=8)
-    age: Optional[int] = Field(default=None, ge=0, le=150)
-
-class UserResponse(BaseModel):
-    id: int
-    name: str
-    email: str
-    age: Optional[int]
-    created_at: datetime
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=1)
-
-class LoginResponse(BaseModel):
-    message: str
-    user_name: str
-    email: str
-
-
-# ── 엔드포인트 ──────────────────────────────────────
-
-@app.post("/items", response_model=ItemResponse, status_code=201)
-def create_item(item: ItemCreate):
-    global next_item_id
-    for existing in items_db.values():
-        if existing["name"] == item.name:
-            raise HTTPException(status_code=400, detail=f"'{item.name}' 이름의 아이템이 이미 존재합니다")
-    new_item = {"id": next_item_id, **item.model_dump(), "created_at": datetime.now()}
-    items_db[next_item_id] = new_item
-    next_item_id += 1
-    return new_item
-
-
-@app.post("/users", response_model=UserResponse, status_code=201)
-def create_user(user: UserCreate):
-    global next_user_id
-    for existing in users_db.values():
-        if existing["email"] == user.email:
-            raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다")
-    new_user = {
-        "id": next_user_id,
-        "name": user.name,
-        "email": user.email,
-        "password_hash": fake_hash_password(user.password),
-        "age": user.age,
-        "created_at": datetime.now(),
-    }
-    users_db[next_user_id] = new_user
-    next_user_id += 1
-    return new_user
-
-
-@app.post("/login", response_model=LoginResponse)
-def login(credentials: LoginRequest):
-    found_user = next((u for u in users_db.values() if u["email"] == credentials.email), None)
-    if not found_user:
-        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다")
-    if not verify_password(credentials.password, found_user["password_hash"]):
-        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다")
-    return LoginResponse(message="로그인 성공", user_name=found_user["name"], email=found_user["email"])
-```
-
----
-
-## 7. 실습 확인 체크리스트
-
-- [ ] `POST /items` 성공 → 201 응답, created_at 포함 확인
-- [ ] `POST /items` price=-100 → 422 응답 확인
-- [ ] `POST /items` 같은 이름 두 번 → 400 응답 확인
-- [ ] `POST /users` 성공 → 응답에 password 없는지 확인
-- [ ] `POST /users` 잘못된 이메일 → 422 응답 확인
-- [ ] `POST /login` 등록된 이메일 + 올바른 비밀번호 → 200 성공
-- [ ] `POST /login` 등록된 이메일 + 틀린 비밀번호 → 401 응답 확인
-- [ ] `POST /login` 없는 이메일 → 401 응답 확인
-
----
-
-## 8. 핵심 요약
+## 6. 핵심 요약
 
 | 개념 | 사용법 |
 |------|--------|
@@ -485,17 +311,3 @@ def login(credentials: LoginRequest):
 | 201 응답 | `@app.post(..., status_code=201)` |
 | 응답에서 필드 제외 | 입력/출력 스키마 분리 |
 | 비즈니스 로직 오류 | `raise HTTPException(status_code=400, ...)` |
-
----
-
-## 9. 퀴즈
-
-1. `Field(gt=0)`과 `Field(ge=0)`의 차이는?
-2. 응답에서 password를 숨기려면 어떻게 해야 하는가?
-3. 중복 이메일 등록 시 409를 반환해야 한다면 코드를 어떻게 바꾸는가?
-4. 422와 400의 차이는 무엇인가?
-
----
-
-**이전 교시** ← [3교시: GET 엔드포인트 구현](../03_GET_엔드포인트/강의자료.md)  
-**다음 교시** → [5교시: 프로젝트 구조화 & 종합 실습](../05_프로젝트구조화/강의자료.md)
