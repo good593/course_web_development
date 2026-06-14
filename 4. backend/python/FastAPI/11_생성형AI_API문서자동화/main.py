@@ -1,7 +1,7 @@
 """
 생성형 AI를 활용한 API 문서 자동화
 
-실행 전 .env 파일에 ANTHROPIC_API_KEY를 설정하고,
+실행 전 .env 파일에 GROQ_API_KEY를 설정하고,
 09_Swagger_API문서화 서버를 먼저 실행하세요.
 
 사용법:
@@ -11,39 +11,66 @@
   python main.py readme      # README만
   python main.py diff        # 이전 스펙과 비교해 변경분만 업데이트
 """
+import json
 import re
 import sys
-import json
 from pathlib import Path
+from typing import Literal
 
 import httpx
-import anthropic
 from dotenv import load_dotenv
+from groq import Groq
 
 load_dotenv()
-client = anthropic.Anthropic()
+client = Groq()
+
+MODEL = "openai/gpt-oss-120b"
 OUTPUT_DIR = Path("output")
 DEFAULT_OPENAPI_URL = "http://localhost:8000/openapi.json"
+ReasoningEffort = Literal["low", "medium", "high"]
 
 
 # ── 유틸 ──────────────────────────────────────────────────────────────────────
 
-def _stream(prompt: str, max_tokens: int = 8192, use_thinking: bool = True) -> str:
-    kwargs = {}
-    if use_thinking:
-        kwargs["thinking"] = {"type": "adaptive"}
-
-    with client.messages.stream(
-        model="claude-opus-4-8",
-        max_tokens=max_tokens,
+def _stream(
+    prompt: str,
+    max_tokens: int = 8192,
+    reasoning_effort: ReasoningEffort = "medium",
+) -> str:
+    stream = client.chat.completions.create(
+        model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        **kwargs,
-    ) as stream:
-        parts = []
-        for text in stream.text_stream:
-            print(text, end="", flush=True)
-            parts.append(text)
+        max_completion_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
+        reasoning_format="hidden",
+        temperature=0.2,
+        stream=True,
+        stream_options={"include_usage": True},
+    )
+
+    parts: list[str] = []
+    usage = None
+
+    for chunk in stream:
+        chunk_usage = getattr(chunk, "usage", None)
+        if chunk_usage is not None:
+            usage = chunk_usage
+
+        if not chunk.choices:
+            continue
+
+        text = chunk.choices[0].delta.content or ""
+        if not text:
+            continue
+
+        print(text, end="", flush=True)
+        parts.append(text)
+
     print()
+    if usage is not None:
+        print(f"입력 토큰: {usage.prompt_tokens} / 출력 토큰: {usage.completion_tokens}")
+        print(f"총 토큰: {usage.total_tokens}")
+
     return "".join(parts)
 
 
@@ -134,7 +161,7 @@ def generate_api_docs(spec: dict) -> str:
 {spec_text}
 """
     print("\n[마크다운 API 문서 생성 중...]\n")
-    return _stream(prompt, max_tokens=8192)
+    return _stream(prompt, max_tokens=8192, reasoning_effort="medium")
 
 
 def generate_postman_collection(spec: dict) -> str:
@@ -160,7 +187,7 @@ JSON만 출력해줘 (설명 없이). ```json ... ``` 블록으로 감싸줘.
 {spec_text}
 """
     print("\n[Postman Collection 생성 중...]\n")
-    raw = _stream(prompt, max_tokens=16000, use_thinking=False)
+    raw = _stream(prompt, max_tokens=16000, reasoning_effort="low")
     return _extract_json(raw)
 
 
@@ -184,7 +211,7 @@ def generate_readme(spec: dict) -> str:
 {spec_text}
 """
     print("\n[README 생성 중...]\n")
-    return _stream(prompt, max_tokens=4096)
+    return _stream(prompt, max_tokens=4096, reasoning_effort="medium")
 
 
 # ── 증분 업데이트 ─────────────────────────────────────────────────────────────
@@ -231,7 +258,7 @@ def generate_diff_docs(changes: list[dict]) -> str:
 {changes_text}
 """
     print(f"\n[변경된 엔드포인트 {len(changes)}개 문서화 중...]\n")
-    return _stream(prompt, max_tokens=4096)
+    return _stream(prompt, max_tokens=4096, reasoning_effort="medium")
 
 
 # ── 파이프라인 ────────────────────────────────────────────────────────────────

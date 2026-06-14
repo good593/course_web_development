@@ -1,15 +1,25 @@
 """
 생성형 AI를 활용한 FastAPI 코드 자동 생성기
 
-실행 전 .env 파일에 ANTHROPIC_API_KEY를 설정하세요.
+실행 전 Ollama를 설치하고 gemma4 모델을 내려받으세요.
+
+    ollama pull gemma4
 """
 import re
-import anthropic
-from dotenv import load_dotenv
+from typing import Any
 
-load_dotenv()
+from ollama import ResponseError, chat
 
-client = anthropic.Anthropic()
+
+CODE_MODEL = "gemma4"
+THINKING_TOKEN = "<|think|>"
+
+# Ollama gemma4 페이지의 권장 샘플링 설정입니다.
+DEFAULT_OPTIONS = {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 64,
+}
 
 SYSTEM_PROMPT = """당신은 FastAPI 전문가입니다.
 사용자의 API 요구사항을 받아 완성된 FastAPI 코드를 생성합니다.
@@ -25,39 +35,111 @@ SYSTEM_PROMPT = """당신은 FastAPI 전문가입니다.
 """
 
 
-def generate_api_code(requirements: str, use_thinking: bool = True) -> str:
+def get_field(value: Any, name: str, default: Any = None) -> Any:
+    """Ollama 응답 객체와 dict 응답을 같은 방식으로 읽습니다."""
+    if isinstance(value, dict):
+        return value.get(name, default)
+    return getattr(value, name, default)
+
+
+def get_message_content(response: Any) -> str:
+    """Ollama chat 응답에서 assistant 메시지 텍스트를 꺼냅니다."""
+    message = get_field(response, "message", {})
+    return get_field(message, "content", "") or ""
+
+
+def strip_gemma4_thoughts(content: str) -> str:
+    """다중 턴 대화 기록에 gemma4 thinking 내용을 다시 넣지 않도록 제거합니다."""
+    pattern = r"<\|channel\>thought\n.*?<channel\|>"
+    return re.sub(pattern, "", content, flags=re.DOTALL).strip()
+
+
+def build_system_message(*, thinking: bool = False) -> dict[str, str]:
+    """gemma4 thinking 모드를 켜려면 system prompt 앞에 전용 토큰을 붙입니다."""
+    content = f"{THINKING_TOKEN}\n{SYSTEM_PROMPT}" if thinking else SYSTEM_PROMPT
+    return {"role": "system", "content": content}
+
+
+def build_messages(user_prompt: str, *, thinking: bool = False) -> list[dict[str, str]]:
+    """Ollama chat API에 전달할 메시지 목록을 만듭니다."""
+    return [
+        build_system_message(thinking=thinking),
+        {"role": "user", "content": user_prompt},
+    ]
+
+
+def print_stats(response: Any) -> None:
+    """Ollama 응답의 로컬 실행 통계를 출력합니다."""
+    prompt_tokens = get_field(response, "prompt_eval_count")
+    output_tokens = get_field(response, "eval_count")
+    total_duration = get_field(response, "total_duration")
+
+    if prompt_tokens is not None:
+        print(f"입력 토큰 추정: {prompt_tokens}")
+    if output_tokens is not None:
+        print(f"출력 토큰 추정: {output_tokens}")
+    if total_duration is not None:
+        print(f"총 소요 시간: {total_duration / 1_000_000_000:.2f}초")
+
+
+def stream_completion(
+    messages: list[dict[str, str]],
+    *,
+    num_predict: int = 8192,
+) -> str:
+    """Ollama 응답을 스트리밍으로 출력하고 전체 텍스트를 반환합니다."""
+    stream = chat(
+        model=CODE_MODEL,
+        messages=messages,
+        stream=True,
+        options={
+            **DEFAULT_OPTIONS,
+            "num_predict": num_predict,
+        },
+    )
+
+    result: list[str] = []
+    final_chunk = None
+
+    for chunk in stream:
+        if get_field(chunk, "done", False):
+            final_chunk = chunk
+
+        text = get_message_content(chunk)
+        if not text:
+            continue
+
+        print(text, end="", flush=True)
+        result.append(text)
+
+    if final_chunk is not None:
+        print(f"\n\n{'=' * 60}")
+        print_stats(final_chunk)
+        print("=" * 60)
+
+    return "".join(result)
+
+
+def generate_api_code(
+    requirements: str,
+    *,
+    thinking: bool = False,
+) -> str:
     """자연어 요구사항을 받아 FastAPI 코드를 생성합니다."""
     print("=" * 60)
     print("코드 생성 중...")
     print("=" * 60 + "\n")
 
-    thinking_option = {"type": "adaptive"} if use_thinking else {"type": "disabled"}
-
-    with client.messages.stream(
-        model="claude-opus-4-8",
-        max_tokens=8192,
-        thinking=thinking_option,
-        system=SYSTEM_PROMPT,
-        messages=[
-            {"role": "user", "content": f"다음 API를 구현해줘:\n\n{requirements}"}
-        ],
-    ) as stream:
-        result = []
-        for text in stream.text_stream:
-            print(text, end="", flush=True)
-            result.append(text)
-
-    final = stream.get_final_message()
-    print(f"\n\n{'=' * 60}")
-    print(f"입력 토큰: {final.usage.input_tokens} / 출력 토큰: {final.usage.output_tokens}")
-    print("=" * 60)
-
-    return "".join(result)
+    messages = build_messages(
+        f"다음 API를 구현해줘:\n\n{requirements}",
+        thinking=thinking,
+    )
+    return stream_completion(messages)
 
 
 def extract_and_save_code(content: str, filename: str = "generated_api.py") -> bool:
     """생성된 마크다운에서 Python 코드 블록을 추출해 파일로 저장합니다."""
-    pattern = r"```python\n(.*?)```"
+    pattern = r"```python\s*\n(.*?)```"
     matches = re.findall(pattern, content, re.DOTALL)
 
     if not matches:
@@ -71,41 +153,43 @@ def extract_and_save_code(content: str, filename: str = "generated_api.py") -> b
     return True
 
 
-def estimate_tokens(prompt: str) -> int:
-    """API 호출 전 입력 토큰 수를 추정합니다."""
-    count = client.messages.count_tokens(
-        model="claude-opus-4-8",
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}],
+def summarize_stats_example(prompt: str) -> None:
+    """짧은 비스트리밍 호출로 Ollama 로컬 실행 통계를 확인합니다."""
+    completion = chat(
+        model=CODE_MODEL,
+        messages=[
+            {
+                "role": "user",
+                "content": f"다음 요구사항을 한 문장으로 요약해줘:\n\n{prompt}",
+            }
+        ],
+        options={
+            **DEFAULT_OPTIONS,
+            "num_predict": 64,
+        },
     )
-    return count.input_tokens
+
+    print(get_message_content(completion))
+    print_stats(completion)
 
 
-def interactive_refinement(initial_requirements: str):
+def interactive_refinement(initial_requirements: str) -> None:
     """다중 턴 대화로 코드를 반복 개선합니다."""
-    conversation = []
+    conversation: list[dict[str, str]] = []
 
     print("\n[다중 턴 코드 생성 시작]")
     print("종료하려면 'quit' 또는 'exit'을 입력하세요.\n")
 
     # 1턴: 초기 코드 생성
     conversation.append({"role": "user", "content": initial_requirements})
-
-    with client.messages.stream(
-        model="claude-opus-4-8",
-        max_tokens=8192,
-        thinking={"type": "adaptive"},
-        system=SYSTEM_PROMPT,
-        messages=conversation,
-    ) as stream:
-        response_parts = []
-        for text in stream.text_stream:
-            print(text, end="", flush=True)
-            response_parts.append(text)
+    full_response = stream_completion(
+        [build_system_message(), *conversation],
+    )
     print("\n")
 
-    full_response = "".join(response_parts)
-    conversation.append({"role": "assistant", "content": full_response})
+    conversation.append(
+        {"role": "assistant", "content": strip_gemma4_thoughts(full_response)}
+    )
 
     # 이후 턴: 사용자 피드백 반영
     while True:
@@ -116,29 +200,21 @@ def interactive_refinement(initial_requirements: str):
             continue
 
         conversation.append({"role": "user", "content": user_input})
-
-        with client.messages.stream(
-            model="claude-opus-4-8",
-            max_tokens=8192,
-            thinking={"type": "adaptive"},
-            system=SYSTEM_PROMPT,
-            messages=conversation,
-        ) as stream:
-            response_parts = []
-            for text in stream.text_stream:
-                print(text, end="", flush=True)
-                response_parts.append(text)
+        full_response = stream_completion(
+            [build_system_message(), *conversation],
+        )
         print("\n")
 
-        full_response = "".join(response_parts)
-        conversation.append({"role": "assistant", "content": full_response})
+        conversation.append(
+            {"role": "assistant", "content": strip_gemma4_thoughts(full_response)}
+        )
 
         save = input("이 코드를 저장할까요? (y/n): ").strip().lower()
         if save == "y":
             extract_and_save_code(full_response, "refined_api.py")
 
 
-# ── 예제 요구사항 ─────────────────────────────────────────────────────────────
+# -- 예제 요구사항 ------------------------------------------------------------
 
 EXAMPLE_SIMPLE = """
 블로그 게시글 관리 API:
@@ -177,30 +253,43 @@ EXAMPLE_COMPLEX = """
 """
 
 
-if __name__ == "__main__":
+def main() -> None:
     import sys
 
     mode = sys.argv[1] if len(sys.argv) > 1 else "simple"
 
-    if mode == "simple":
-        # 단순 코드 생성
-        estimated = estimate_tokens(EXAMPLE_SIMPLE)
-        print(f"예상 입력 토큰: {estimated}\n")
-        generated = generate_api_code(EXAMPLE_SIMPLE)
-        extract_and_save_code(generated, "generated_blog_api.py")
+    try:
+        if mode == "simple":
+            # 단순 코드 생성
+            print(f"프롬프트 글자 수: {len(EXAMPLE_SIMPLE):,}\n")
+            generated = generate_api_code(EXAMPLE_SIMPLE)
+            extract_and_save_code(generated, "generated_blog_api.py")
 
-    elif mode == "complex":
-        # 복잡한 코드 생성 (adaptive thinking 활용)
-        generated = generate_api_code(EXAMPLE_COMPLEX, use_thinking=True)
-        extract_and_save_code(generated, "generated_order_api.py")
+        elif mode == "complex":
+            # 복잡한 코드 생성: gemma4 thinking 모드 활용
+            generated = generate_api_code(EXAMPLE_COMPLEX, thinking=True)
+            extract_and_save_code(generated, "generated_order_api.py")
 
-    elif mode == "interactive":
-        # 다중 턴 대화로 코드 개선
-        custom_requirements = """
-        사용자 관리 API (username, email, password 필드)
-        CRUD 기능 + 비밀번호 변경 엔드포인트 포함
-        """
-        interactive_refinement(custom_requirements)
+        elif mode == "interactive":
+            # 다중 턴 대화로 코드 개선
+            custom_requirements = """
+            사용자 관리 API (username, email, password 필드)
+            CRUD 기능 + 비밀번호 변경 엔드포인트 포함
+            """
+            interactive_refinement(custom_requirements)
 
-    else:
-        print("사용법: python main.py [simple|complex|interactive]")
+        elif mode == "usage":
+            # 짧은 비스트리밍 호출로 로컬 실행 통계 확인
+            summarize_stats_example(EXAMPLE_SIMPLE)
+
+        else:
+            print("사용법: python main.py [simple|complex|interactive|usage]")
+
+    except ResponseError as error:
+        print(f"\nOllama 호출 실패: {error}")
+        print("Ollama가 실행 중인지, `ollama pull gemma4`를 먼저 실행했는지 확인하세요.")
+        raise
+
+
+if __name__ == "__main__":
+    main()
