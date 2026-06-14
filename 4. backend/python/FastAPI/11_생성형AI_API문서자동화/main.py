@@ -2,7 +2,7 @@
 생성형 AI를 활용한 API 문서 자동화
 
 실행 전 .env 파일에 GROQ_API_KEY를 설정하고,
-09_Swagger_API문서화 서버를 먼저 실행하세요.
+api_server.py FastAPI 서버를 먼저 실행하세요.
 
 사용법:
   python main.py pipeline    # 전체 파이프라인 (문서 + Collection + README)
@@ -15,38 +15,67 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 from dotenv import load_dotenv
-from groq import Groq
+from groq import APIStatusError, Groq
 
 load_dotenv()
 client = Groq()
 
 MODEL = "openai/gpt-oss-120b"
 OUTPUT_DIR = Path("output")
-DEFAULT_OPENAPI_URL = "http://localhost:8000/openapi.json"
+DEFAULT_OPENAPI_URL = "http://localhost:8001/openapi.json"
 ReasoningEffort = Literal["low", "medium", "high"]
+GROQ_TPM_SAFE_LIMIT = 7600
+DOCS_MAX_TOKENS = 3072
+COLLECTION_MAX_TOKENS = 4096
+README_MAX_TOKENS = 2048
+DIFF_MAX_TOKENS = 2048
 
 
 # ── 유틸 ──────────────────────────────────────────────────────────────────────
+
+def _rough_token_estimate(text: str) -> int:
+    """Groq 요청 한도를 넘기지 않기 위한 보수적 근사치."""
+    return max(1, len(text) // 3)
+
 
 def _stream(
     prompt: str,
     max_tokens: int = 8192,
     reasoning_effort: ReasoningEffort = "medium",
 ) -> str:
-    stream = client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        max_completion_tokens=max_tokens,
-        reasoning_effort=reasoning_effort,
-        reasoning_format="hidden",
-        temperature=0.2,
-        stream=True,
-        stream_options={"include_usage": True},
-    )
+    prompt_tokens = _rough_token_estimate(prompt)
+    available_tokens = GROQ_TPM_SAFE_LIMIT - prompt_tokens
+    if available_tokens < 512:
+        print("요청 프롬프트가 현재 Groq 토큰 한도보다 큽니다.")
+        print("OpenAPI 스펙을 더 줄이거나 Groq 사용 한도가 높은 모델/티어를 사용하세요.")
+        sys.exit(1)
+
+    if max_tokens > available_tokens:
+        max_tokens = available_tokens
+        print(f"현재 Groq 한도에 맞춰 출력 토큰을 {max_tokens}개로 조정합니다.")
+
+    try:
+        stream = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=max_tokens,
+            reasoning_effort=reasoning_effort,
+            reasoning_format="hidden",
+            temperature=0.2,
+            stream=True,
+        )
+    except APIStatusError as e:
+        print(f"Groq API 요청 실패: {e.status_code}")
+        if e.status_code in {413, 429}:
+            print("현재 모델/계정의 토큰 한도를 넘었습니다.")
+            print("잠시 후 다시 실행하거나, 더 작은 명령(docs/readme 등)으로 나눠 실행하세요.")
+        else:
+            print(e)
+        sys.exit(1)
 
     parts: list[str] = []
     usage = None
@@ -88,6 +117,159 @@ def _extract_json(text: str) -> str:
     return match.group(1).strip() if match else text.strip()
 
 
+def _compact_schema(schema: Any, components: dict[str, Any], seen: set[str] | None = None) -> Any:
+    """프롬프트용으로 JSON Schema의 핵심 정보만 남깁니다."""
+    if not isinstance(schema, dict):
+        return schema
+
+    seen = seen or set()
+
+    if "$ref" in schema:
+        ref = schema["$ref"]
+        name = ref.rsplit("/", 1)[-1]
+        if name in seen:
+            return {"ref": name}
+        target = components.get(name)
+        if target is None:
+            return {"ref": name}
+        compact = _compact_schema(target, components, seen | {name})
+        if isinstance(compact, dict):
+            compact.setdefault("name", name)
+        return compact
+
+    keep_keys = {
+        "type",
+        "format",
+        "description",
+        "enum",
+        "default",
+        "example",
+        "examples",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "minLength",
+        "maxLength",
+        "minItems",
+        "maxItems",
+        "required",
+    }
+    compact = {key: schema[key] for key in keep_keys if key in schema}
+
+    if "properties" in schema:
+        compact["properties"] = {
+            name: _compact_schema(value, components, seen)
+            for name, value in schema["properties"].items()
+        }
+
+    if "items" in schema:
+        compact["items"] = _compact_schema(schema["items"], components, seen)
+
+    for key in ("anyOf", "oneOf", "allOf"):
+        if key in schema:
+            compact[key] = [_compact_schema(item, components, seen) for item in schema[key]]
+
+    return compact
+
+
+def _compact_content(content: dict[str, Any] | None, components: dict[str, Any]) -> dict[str, Any] | None:
+    if not content:
+        return None
+
+    media = content.get("application/json") or next(iter(content.values()), None)
+    if not isinstance(media, dict):
+        return None
+
+    compact: dict[str, Any] = {}
+    if "schema" in media:
+        compact["schema"] = _compact_schema(media["schema"], components)
+    for key in ("example", "examples"):
+        if key in media:
+            compact[key] = media[key]
+    return compact or None
+
+
+def _compact_parameter(parameter: dict[str, Any], components: dict[str, Any]) -> dict[str, Any]:
+    compact = {
+        key: parameter[key]
+        for key in ("name", "in", "required", "description", "example", "examples")
+        if key in parameter
+    }
+    if "schema" in parameter:
+        compact["schema"] = _compact_schema(parameter["schema"], components)
+    return compact
+
+
+def compact_openapi_spec(spec: dict) -> dict:
+    """LLM 프롬프트에 필요한 OpenAPI 정보만 추립니다."""
+    components = spec.get("components", {}).get("schemas", {})
+    security_schemes = spec.get("components", {}).get("securitySchemes", {})
+    compact: dict[str, Any] = {
+        "info": {
+            key: spec.get("info", {}).get(key)
+            for key in ("title", "summary", "description", "version")
+            if spec.get("info", {}).get(key)
+        },
+        "paths": {},
+    }
+
+    if spec.get("servers"):
+        compact["servers"] = spec["servers"]
+    if security_schemes:
+        compact["securitySchemes"] = security_schemes
+
+    for path, methods in spec.get("paths", {}).items():
+        compact["paths"][path] = {}
+        for method, operation in methods.items():
+            if method.lower() not in {"get", "post", "put", "patch", "delete"}:
+                continue
+
+            op = {
+                key: operation[key]
+                for key in ("tags", "summary", "description", "operationId")
+                if key in operation
+            }
+
+            if operation.get("parameters"):
+                op["parameters"] = [
+                    _compact_parameter(parameter, components)
+                    for parameter in operation["parameters"]
+                ]
+
+            request_body = operation.get("requestBody", {})
+            request_content = _compact_content(request_body.get("content"), components)
+            if request_content:
+                op["requestBody"] = {
+                    "required": request_body.get("required", False),
+                    "content": request_content,
+                }
+
+            responses: dict[str, Any] = {}
+            for status, response in operation.get("responses", {}).items():
+                response_info: dict[str, Any] = {
+                    "description": response.get("description", "")
+                }
+                response_content = _compact_content(response.get("content"), components)
+                if response_content and status != "422":
+                    response_info["content"] = response_content
+                responses[status] = response_info
+            if responses:
+                op["responses"] = responses
+
+            if operation.get("security"):
+                op["security"] = operation["security"]
+
+            compact["paths"][path][method] = op
+
+    return compact
+
+
+def format_spec_for_prompt(spec: dict) -> str:
+    compact = compact_openapi_spec(spec)
+    return json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
+
+
 def build_openapi_url(base_or_spec_url: str) -> str:
     """서버 기본 URL 또는 openapi.json 전체 URL을 모두 허용합니다."""
     url = base_or_spec_url.rstrip("/")
@@ -109,8 +291,8 @@ def fetch_openapi_spec(url: str = DEFAULT_OPENAPI_URL) -> dict:
         return spec
     except httpx.ConnectError:
         print(f"서버에 연결할 수 없습니다: {spec_url}")
-        print("09_Swagger_API문서화 폴더에서 서버를 먼저 실행하세요.")
-        print("  uvicorn main:app --reload")
+        print("api_server.py FastAPI 서버를 먼저 실행하세요.")
+        print("  uvicorn api_server:app --reload --port 8001")
         sys.exit(1)
     except httpx.RequestError as e:
         print(f"OpenAPI 스펙 요청 중 오류가 발생했습니다: {e}")
@@ -141,7 +323,7 @@ def load_spec_snapshot() -> dict | None:
 # ── 문서 생성 함수 ────────────────────────────────────────────────────────────
 
 def generate_api_docs(spec: dict) -> str:
-    spec_text = json.dumps(spec, ensure_ascii=False, indent=2)
+    spec_text = format_spec_for_prompt(spec)
     prompt = f"""다음 OpenAPI 스펙을 분석해서 개발자용 API 문서를 마크다운으로 작성해줘.
 
 [포함할 내용]
@@ -161,11 +343,11 @@ def generate_api_docs(spec: dict) -> str:
 {spec_text}
 """
     print("\n[마크다운 API 문서 생성 중...]\n")
-    return _stream(prompt, max_tokens=8192, reasoning_effort="medium")
+    return _stream(prompt, max_tokens=DOCS_MAX_TOKENS, reasoning_effort="medium")
 
 
 def generate_postman_collection(spec: dict) -> str:
-    spec_text = json.dumps(spec, ensure_ascii=False, indent=2)
+    spec_text = format_spec_for_prompt(spec)
     prompt = f"""다음 OpenAPI 스펙을 Postman Collection v2.1 JSON으로 변환해줘.
 
 [요구사항]
@@ -187,12 +369,12 @@ JSON만 출력해줘 (설명 없이). ```json ... ``` 블록으로 감싸줘.
 {spec_text}
 """
     print("\n[Postman Collection 생성 중...]\n")
-    raw = _stream(prompt, max_tokens=16000, reasoning_effort="low")
+    raw = _stream(prompt, max_tokens=COLLECTION_MAX_TOKENS, reasoning_effort="low")
     return _extract_json(raw)
 
 
 def generate_readme(spec: dict) -> str:
-    spec_text = json.dumps(spec, ensure_ascii=False, indent=2)
+    spec_text = format_spec_for_prompt(spec)
     prompt = f"""다음 OpenAPI 스펙을 기반으로 GitHub README.md를 한국어로 작성해줘.
 
 [포함할 섹션]
@@ -211,7 +393,7 @@ def generate_readme(spec: dict) -> str:
 {spec_text}
 """
     print("\n[README 생성 중...]\n")
-    return _stream(prompt, max_tokens=4096, reasoning_effort="medium")
+    return _stream(prompt, max_tokens=README_MAX_TOKENS, reasoning_effort="medium")
 
 
 # ── 증분 업데이트 ─────────────────────────────────────────────────────────────
@@ -246,7 +428,7 @@ def generate_diff_docs(changes: list[dict]) -> str:
         print("변경된 엔드포인트가 없습니다.")
         return ""
 
-    changes_text = json.dumps(changes, ensure_ascii=False, indent=2)
+    changes_text = json.dumps(changes, ensure_ascii=False, separators=(",", ":"))
     prompt = f"""다음 API 변경사항에 대한 마크다운 문서를 작성해줘.
 
 [포함할 내용]
@@ -258,12 +440,12 @@ def generate_diff_docs(changes: list[dict]) -> str:
 {changes_text}
 """
     print(f"\n[변경된 엔드포인트 {len(changes)}개 문서화 중...]\n")
-    return _stream(prompt, max_tokens=4096, reasoning_effort="medium")
+    return _stream(prompt, max_tokens=DIFF_MAX_TOKENS, reasoning_effort="medium")
 
 
 # ── 파이프라인 ────────────────────────────────────────────────────────────────
 
-def run_pipeline(server_url: str = "http://localhost:8000"):
+def run_pipeline(server_url: str = "http://localhost:8001"):
     print("=" * 60)
     print("API 문서 자동화 파이프라인")
     print("=" * 60)
@@ -293,7 +475,7 @@ def run_pipeline(server_url: str = "http://localhost:8000"):
     print("=" * 60)
 
 
-def run_diff(server_url: str = "http://localhost:8000"):
+def run_diff(server_url: str = "http://localhost:8001"):
     old_spec = load_spec_snapshot()
     if old_spec is None:
         print("이전 스냅샷이 없습니다. 전체 파이프라인을 먼저 실행하세요.")
@@ -316,7 +498,7 @@ def run_diff(server_url: str = "http://localhost:8000"):
 
 if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else "pipeline"
-    server_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:8000"
+    server_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:8001"
 
     spec = None
 
