@@ -1,5 +1,17 @@
-# 7교시 — 요청·응답 데이터 검증
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# 요청·응답 데이터 검증
 
+---
 ## 학습 목표
 
 - FastAPI의 자동 검증 흐름을 이해하고 422 응답을 해석할 수 있다
@@ -7,16 +19,12 @@
 - 커스텀 예외 핸들러로 에러 응답 형식을 통일할 수 있다
 - 비즈니스 로직 검증 패턴을 API 계층에서 올바르게 구현할 수 있다
 
-## 이번 교시의 범위
-
-7교시는 **FastAPI 요청/응답 흐름에서 검증이 어떻게 작동하는지**를 보는 시간입니다.  
-Pydantic 모델 작성법 자체보다, 요청 파싱, 422 응답 해석, `HTTPException`, 커스텀 예외 핸들러, 비즈니스 로직 검증의 위치에 집중합니다.
-
-필드 타입, `Field()` 제약, `field_validator`, `model_validator` 같은 모델링 문법은 6교시에서 이미 학습한 내용을 활용합니다.
+---
+## 1. FastAPI의 자동 검증 흐름
 
 ---
-
-## 1. FastAPI의 자동 검증 흐름
+> FastAPI는 요청이 들어오는 순간 Pydantic을 통해 자동으로 타입 변환과 검증을 수행 
+> 개발자가 별도 검증 코드를 작성하지 않아도 **타입 오류는 422**로 자동 처리
 
 ```
 클라이언트 요청
@@ -37,15 +45,12 @@ Pydantic 모델 파싱 & 검증 ──실패──► 422 Unprocessable Entity
 HTTP 응답 반환
 ```
 
-FastAPI는 요청이 들어오는 순간 Pydantic을 통해 자동으로 타입 변환과 검증을 수행합니다.  
-개발자가 별도 검증 코드를 작성하지 않아도 **타입 오류는 422**로 자동 처리됩니다.
-
 ---
-
 ## 2. 422 Unprocessable Entity
 
 Pydantic 검증 실패 시 FastAPI가 자동으로 반환하는 응답입니다.
 
+---
 ### 요청 예시
 
 ```json
@@ -57,6 +62,7 @@ POST /users
 }
 ```
 
+---
 ### 422 응답 구조
 
 ```json
@@ -69,12 +75,7 @@ POST /users
             "input": "a",
             "ctx": {"min_length": 3}
         },
-        {
-            "type": "value_error",
-            "loc": ["body", "age"],
-            "msg": "Value error, 나이는 0~150 사이여야 합니다.",
-            "input": -5
-        }
+        ...
     ]
 }
 ```
@@ -82,7 +83,6 @@ POST /users
 `loc` 배열이 오류 위치를 나타냅니다: `["body", "필드명"]`, `["path", "파라미터명"]`, `["query", "파라미터명"]`
 
 ---
-
 ## 3. HTTPException — 명시적 오류 반환
 
 Pydantic 검증 이후의 **비즈니스 로직 오류**는 `HTTPException`으로 처리합니다.
@@ -101,12 +101,10 @@ def get_user(user_id: int):
     if user is None:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
-    if not user["active"]:
-        raise HTTPException(status_code=403, detail="비활성화된 계정입니다.")
-
     return user
 ```
 
+---
 ### 상황별 상태 코드 가이드
 
 | 상황 | 상태 코드 | 설명 |
@@ -119,7 +117,6 @@ def get_user(user_id: int):
 | 서버 오류 | 500 Internal Server Error | 예상치 못한 서버 오류 |
 
 ---
-
 ## 4. detail 구조화
 
 `detail`에 문자열 대신 dict를 넣어 더 많은 정보를 담을 수 있습니다.
@@ -136,6 +133,7 @@ raise HTTPException(
 )
 ```
 
+---
 응답:
 ```json
 {
@@ -149,17 +147,12 @@ raise HTTPException(
 ```
 
 ---
-
 ## 5. 커스텀 예외 핸들러
 
 팀 전체에서 통일된 에러 응답 형식을 사용하려면 예외 핸들러를 등록합니다.
 
 ```python
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-
-app = FastAPI()
+...
 
 # ── 공통 에러 응답 형식 ─────────────────────────────
 def error_response(code: str, message: str, details=None):
@@ -167,21 +160,6 @@ def error_response(code: str, message: str, details=None):
     if details:
         body["error"]["details"] = details
     return body
-
-# ── 422 검증 오류 핸들러 ────────────────────────────
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    errors = []
-    for err in exc.errors():
-        errors.append({
-            "field": ".".join(str(loc) for loc in err["loc"][1:]),  # body 제거
-            "message": err["msg"],
-            "type": err["type"],
-        })
-    return JSONResponse(
-        status_code=422,
-        content=error_response("VALIDATION_ERROR", "입력값이 올바르지 않습니다.", errors),
-    )
 
 # ── HTTPException 핸들러 ────────────────────────────
 @app.exception_handler(HTTPException)
@@ -192,6 +170,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     )
 ```
 
+---
 ### 커스텀 핸들러 적용 전/후 비교
 
 **기본 422 응답:**
@@ -212,9 +191,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 ```
 
 ---
-
 ## 6. 비즈니스 로직 검증 패턴
 
+---
 ### 패턴 1 — 중복 체크
 
 ```python
@@ -230,6 +209,7 @@ def create_user(user: UserCreate):
     return users_db[new_id]
 ```
 
+---
 ### 패턴 2 — 상태 전이 검증
 
 ```python
@@ -258,6 +238,7 @@ def update_order_status(order_id: int, new_status: str):
     return order
 ```
 
+---
 ### 패턴 3 — 재고 검증
 
 ```python
@@ -291,7 +272,6 @@ def create_order(order: OrderCreate):
 ```
 
 ---
-
 ## 7. response_model — 응답 검증 & 필터링
 
 ```python
@@ -313,6 +293,7 @@ def create_user(user: UserCreate):
     return new_user  # response_model이 password를 자동으로 제거
 ```
 
+---
 ### response_model_exclude_unset
 
 수정 API에서 변경되지 않은 필드는 응답에서 제외할 때 사용합니다.
@@ -324,7 +305,6 @@ def update_user(user_id: int, update: UserUpdate):
 ```
 
 ---
-
 ## 8. 검증 레이어 구조 정리
 
 ```
@@ -345,22 +325,6 @@ def update_user(user_id: int, update: UserUpdate):
     ▼
 클라이언트 응답
 ```
-
----
-
-## 9. 실습 — 검증이 포함된 회원 API
-
-```python
-# 07_요청응답_검증/main.py 참고
-```
-
-**실습 과제**:
-
-1. 회원 가입 시 비밀번호 확인 필드(`password_confirm`)를 model_validator로 검증하세요
-2. 동일 이메일 중복 가입을 409로 차단하세요
-3. 존재하지 않는 회원 조회를 404로 처리하세요
-4. 비활성 회원 수정 요청을 403으로 처리하세요
-5. 커스텀 예외 핸들러로 모든 에러 응답을 통일된 형식으로 반환하세요
 
 ---
 
