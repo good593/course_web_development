@@ -1,5 +1,17 @@
-# 13교시: CRUD 기반 백엔드 서비스 구현
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# CRUD 기반 백엔드 서비스 구현
 
+---
 ## 학습 목표
 
 - SQLAlchemy ORM으로 실제 DB와 연동하는 CRUD API 완성
@@ -8,18 +20,20 @@
 - 비즈니스 로직 검증 (공개 게시글에만 댓글, 게시글 있는 카테고리 삭제 방지)
 
 ---
-
 ## 1. 프로젝트 구조
 
 ```
 13_CRUD_서비스구현/
-├── main.py       ← FastAPI 앱 + 라우터 + Repository + Service
-├── database.py   ← DB 연결, 세션, Base
-├── models.py     ← SQLAlchemy ORM 모델
-├── schemas.py    ← Pydantic 입출력 스키마
-└── requirements.txt
+├── main.py          ← FastAPI 앱 + 엔드포인트
+├── dependencies.py  ← Service 의존성 주입 함수
+├── services.py      ← 비즈니스 로직
+├── repositories.py  ← DB 쿼리
+├── database.py      ← DB 연결, 세션, Base
+├── models.py        ← SQLAlchemy ORM 모델
+└── schemas.py       ← Pydantic 입출력 스키마
 ```
 
+---
 ### 파일 역할 분담
 
 | 파일 | 담당 |
@@ -27,18 +41,15 @@
 | `database.py` | DB URL, engine, SessionLocal, `get_db()` |
 | `models.py` | 테이블 정의 (Column, ForeignKey, relationship) |
 | `schemas.py` | 입력/출력 형식 (Pydantic BaseModel) |
-| `main.py` | Repository, Service, FastAPI 엔드포인트 |
+| `repositories.py` | SQLAlchemy 쿼리와 DB commit/refresh |
+| `services.py` | 비즈니스 규칙 검증과 Repository 조합 |
+| `dependencies.py` | 요청마다 DB 세션을 주입받아 Service 생성 |
+| `main.py` | FastAPI 앱 생성, 테이블 생성, 엔드포인트 |
 
 ---
-
 ## 2. database.py — DB 연결
 
-> 이 코드는 12교시 설계 문서에서 이미 다룬 내용과 동일합니다. 내용이 기억나지 않는다면 [12교시 강의자료](../12_CRUD_서비스설계/강의자료.md) 섹션 3을 참고하세요.
-
 ```python
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
-
 DATABASE_URL = "sqlite:///./blog.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -55,18 +66,10 @@ def get_db():
 
 **실습 포인트**: `main.py` 상단에서 앱 시작 전에 `Base.metadata.create_all(bind=engine)`를 호출해야 테이블이 자동 생성됩니다.
 
-### SQLite vs PostgreSQL
-
-| 항목 | SQLite | PostgreSQL |
-|------|--------|-----------|
-| URL | `sqlite:///./blog.db` | `postgresql://user:pw@host/db` |
-| `check_same_thread` | 필요 (멀티스레드 이슈) | 불필요 |
-| 용도 | 개발/강의 실습 | 프로덕션 |
-
 ---
-
 ## 3. models.py — SQLAlchemy 모델
 
+---
 ### Category → Post → Comment 관계
 
 ```
@@ -86,6 +89,7 @@ Comment
   post = relationship("Post", ...)
 ```
 
+---
 ### cascade="all, delete-orphan"
 
 ```python
@@ -104,11 +108,9 @@ db.commit()
 ```
 
 ---
-
 ## 4. schemas.py — Pydantic 스키마
 
-> `CategoryCreate`, `CategoryResponse`, `PostCreate`, `PostUpdate`, `PostResponse`, `CommentCreate`, `CommentResponse`의 기본 Create/Update/Response 패턴은 **12교시에서 이미 설계**했습니다. 13교시에서는 구현에 필요한 **추가 스키마**만 새로 정의합니다.
-
+---
 ### 중첩 응답 — PostDetailResponse
 
 게시글 단건 조회 시 카테고리 정보와 댓글 목록까지 함께 반환합니다.
@@ -119,6 +121,7 @@ class PostDetailResponse(PostResponse):
     comments: list[CommentResponse] = []        # 댓글 리스트 포함
 ```
 
+---
 ### 페이지네이션 응답 — PaginatedPosts
 
 목록 API는 전체 수와 페이지 정보를 함께 반환해야 클라이언트가 페이지 네비게이션을 구현할 수 있습니다.
@@ -131,6 +134,7 @@ class PaginatedPosts(BaseModel):
     items: list[PostResponse]       # 현재 페이지 데이터
 ```
 
+---
 ### 스키마 목적별 규칙 복습
 
 | 스키마 | 특징 |
@@ -142,12 +146,18 @@ class PaginatedPosts(BaseModel):
 | `Paginated...` | `total`, `skip`, `limit` + `items` 배열 |
 
 ---
+## 5. repositories.py — DB 쿼리
 
-## 5. Repository — DB 쿼리
-
+---
 ### 기본 CRUD 패턴
 
 ```python
+from sqlalchemy.orm import Session
+
+import models
+import schemas
+
+
 class PostRepository:
     def __init__(self, db: Session):
         self.db = db
@@ -178,6 +188,7 @@ class PostRepository:
         self.db.commit()
 ```
 
+---
 ### 목록 조회 — 필터, 검색, 페이징
 
 ```python
@@ -208,6 +219,7 @@ def get_list(
     )
 ```
 
+---
 ### 전체 수 조회 (페이지네이션용)
 
 ```python
@@ -218,12 +230,19 @@ def count(self, category_id=None, published_only=False, search=None) -> int:
 ```
 
 ---
+## 6. services.py — 비즈니스 로직
 
-## 6. Service — 비즈니스 로직
-
+---
 ### 검증 패턴
 
 ```python
+from fastapi import HTTPException
+
+import models
+import schemas
+from repositories import CategoryRepository, CommentRepository, PostRepository
+
+
 class PostService:
     def _get_or_404(self, post_id: int) -> models.Post:
         post = self.repo.get_by_id(post_id)
@@ -249,6 +268,7 @@ class PostService:
         return self.comment_repo.create(post_id, data)
 ```
 
+---
 ### 관계 삭제 방지
 
 ```python
@@ -267,10 +287,34 @@ def delete_category(self, cat_id: int) -> None:
 ```
 
 ---
+## 7. dependencies.py — 의존성 주입
 
-## 7. 엔드포인트 — Query 파라미터
+라우터 함수가 DB 세션을 직접 만들지 않도록, Service 생성 로직을 별도 파일로 분리합니다.
 
 ```python
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+from database import get_db
+from services import CategoryService, PostService
+
+
+def get_category_service(db: Session = Depends(get_db)) -> CategoryService:
+    return CategoryService(db)
+
+
+def get_post_service(db: Session = Depends(get_db)) -> PostService:
+    return PostService(db)
+```
+
+---
+## 8. main.py — 엔드포인트와 Query 파라미터
+
+```python
+from dependencies import get_post_service
+from services import PostService
+
+
 @app.get("/posts", response_model=schemas.PaginatedPosts)
 def list_posts(
     skip: int = Query(0, ge=0, description="건너뛸 항목 수"),
@@ -283,6 +327,7 @@ def list_posts(
     return service.list_posts(...)
 ```
 
+---
 ### 요청 예시
 
 ```bash
@@ -296,6 +341,7 @@ GET /posts?category_id=1&published_only=true&skip=20&limit=20
 GET /posts?search=FastAPI
 ```
 
+---
 ### 응답 예시
 
 ```json
@@ -315,16 +361,15 @@ GET /posts?search=FastAPI
 ```
 
 ---
-
-## 8. 실행 및 테스트
+## 9. 실행 및 테스트
 
 ### 서버 실행
 
 ```bash
-pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn main:app --reload --port 8001
 ```
 
+---
 ### 실습 순서
 
 1. `POST /categories` — 카테고리 생성
@@ -334,19 +379,7 @@ uvicorn main:app --reload
 5. `GET /posts?published_only=true` — 공개 게시글 조회
 6. `DELETE /posts/{id}` — 게시글 삭제 (댓글도 함께)
 
-### DB 파일 확인
-
-```bash
-# blog.db 파일이 생성됨
-ls -la blog.db
-
-# SQLite 직접 확인 (선택)
-sqlite3 blog.db ".tables"
-sqlite3 blog.db "SELECT * FROM posts;"
-```
-
 ---
-
 ## 핵심 패턴 요약
 
 | 패턴 | 코드 |
@@ -357,3 +390,4 @@ sqlite3 blog.db "SELECT * FROM posts;"
 | cascade 삭제 | `cascade="all, delete-orphan"` on relationship |
 | 전체 수 + 목록 | `count()` + `offset().limit().all()` |
 | 비즈니스 검증 | Service 계층에서 HTTPException 발생 |
+| 계층 분리 | Repository는 DB 쿼리, Service는 규칙 검증, main은 라우팅 |
