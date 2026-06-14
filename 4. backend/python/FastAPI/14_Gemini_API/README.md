@@ -1,5 +1,17 @@
-# 17교시: Gemini API 키 발급 및 SDK 기본 호출
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# Gemini API 키 발급 및 SDK 기본 호출
 
+---
 ## 학습 목표
 
 - Google AI Studio에서 API 키를 발급한다
@@ -8,25 +20,37 @@
 - 기본 에러 처리 패턴을 익힌다
 
 ---
-
 ## 1. API 키 발급 (무료)
 
-### Google AI Studio 접속
+---
+### [Google AI Studio 접속](https://aistudio.google.com/prompts/new_chat)
 
-1. `aistudio.google.com` 접속
-2. Google 계정으로 로그인
-3. 왼쪽 메뉴 → **Get API key** 클릭
-4. **Create API key** → 새 키 생성
-5. 키 복사 (`AIza...` 형태)
+![alt text](./img/image.png)
 
-> API 키는 절대 코드에 직접 넣지 않습니다. `.env` 파일에 저장합니다.
+---
+> API Key 만들기 
 
+![alt text](./img/image-1.png)
+
+---
+> API Key 생성
+
+![alt text](./img/image-2.png)
+
+---
 ### 환경변수 설정
+> 생성한 키 복사하기
 
-```bash
-# .env 파일 생성
-GEMINI_API_KEY=AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
+![bg right w:600](./img/image-3.png)
+
+---
+> API 키는 절대 코드에 직접 넣지 않습니다. 
+> `.env.sample`을 통해 `.env` 파일 생성 후 저장합니다.
+
+![alt text](./img/image-4.png)
+
+---
+> 파이썬 코드를 통해 생성한 키 적용하기 
 
 ```python
 # Python에서 로드
@@ -38,7 +62,6 @@ api_key = os.environ["GEMINI_API_KEY"]
 ```
 
 ---
-
 ## 2. SDK 설치
 
 ```bash
@@ -57,9 +80,9 @@ google-genai
 > `google-generativeai` (구 SDK)와 다릅니다. 반드시 `google-genai`를 사용하세요.
 
 ---
-
 ## 3. 첫 API 호출
 
+---
 ### 최소 코드
 
 ```python
@@ -74,6 +97,7 @@ response = client.models.generate_content(
 print(response.text)
 ```
 
+---
 ### 권장 패턴 (환경변수 사용)
 
 ```python
@@ -92,9 +116,9 @@ print(response.text)
 ```
 
 ---
-
 ## 4. 응답 구조 분석
 
+---
 ### Response 객체
 
 ```python
@@ -114,6 +138,7 @@ candidate = response.candidates[0]
 print(f"중단 이유: {candidate.finish_reason}")
 ```
 
+---
 ### 응답 전체 구조
 
 ```
@@ -130,7 +155,6 @@ GenerateContentResponse
 ```
 
 ---
-
 ## 5. 시스템 지시문 (System Instruction)
 
 모델의 역할이나 행동 방식을 미리 정의합니다.
@@ -150,7 +174,6 @@ print(response.text)
 ```
 
 ---
-
 ## 6. 토큰 사전 카운팅
 
 API 호출 전에 토큰 수를 미리 확인할 수 있습니다.
@@ -164,7 +187,6 @@ print(f"예상 토큰: {token_response.total_tokens}")
 ```
 
 ---
-
 ## 7. 에러 처리
 
 ```python
@@ -178,13 +200,14 @@ try:
     return response.text
 
 except errors.APIError as e:
-    # API 레벨 에러 (400, 429, 500 등)
-    print(f"API 에러 [{e.status_code}]: {e.message}")
+    message = e.message or str(e)
+    print(f"  APIError [{e.code} {e.status}]: {message[:100]}")
 
 except Exception as e:
     print(f"예상치 못한 에러: {e}")
 ```
 
+---
 ### 주요 에러 코드
 
 | 코드 | 의미 | 대처 |
@@ -195,7 +218,6 @@ except Exception as e:
 | 500 | 서버 내부 오류 | 재시도 |
 
 ---
-
 ## 8. 사용 가능한 모델 목록 조회
 
 ```python
@@ -211,57 +233,3 @@ for model in client.models.list():
 | `gemini-3.1-flash-lite` | 고빈도·경량 작업에 유리 | O |
 | `gemini-3.1-pro-preview` | 복잡한 추론·코딩 작업 | X |
 | `gemini-2.5-flash` | 이전 세대 Flash, 추론 지원 | O (제한) |
-
----
-
-## 9. 이미지 입력 (멀티모달)
-
-Gemini는 텍스트 외 이미지도 입력으로 받을 수 있습니다.
-
-```python
-import httpx
-from google.genai import types
-
-# URL에서 이미지 가져오기
-image_url = "https://example.com/image.jpg"
-image_data = httpx.get(image_url).content
-
-response = client.models.generate_content(
-    model="gemini-3.5-flash",
-    contents=[
-        types.Part.from_bytes(data=image_data, mime_type="image/jpeg"),
-        "이 이미지에 무엇이 있나요?",
-    ],
-)
-print(response.text)
-```
-
----
-
-## 핵심 패턴 요약
-
-```python
-# 필수 패턴 (암기)
-from google import genai
-from google.genai import types, errors
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-
-try:
-    response = client.models.generate_content(
-        model="gemini-3.5-flash",
-        contents="질문",
-        config=types.GenerateContentConfig(
-            system_instruction="역할 지시문",
-            max_output_tokens=1000,
-        ),
-    )
-    print(response.text)
-    print(f"사용 토큰: {response.usage_metadata.total_token_count}")
-
-except errors.APIError as e:
-    print(f"에러: {e.message}")
-```

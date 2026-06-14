@@ -129,7 +129,8 @@ def error_handling_demo():
             print(f"  성공: {response.text[:80]}")
 
         except errors.APIError as e:
-            print(f"  APIError [{e.status_code}]: {e.message[:100]}")
+            message = e.message or str(e)
+            print(f"  APIError [{e.code} {e.status}]: {message[:100]}")
 
         except Exception as e:
             print(f"  예외: {type(e).__name__}: {str(e)[:100]}")
