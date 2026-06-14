@@ -5,24 +5,108 @@
 """
 
 import os
+import re
+import time
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 load_dotenv()
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 MODEL = "gemini-3.5-flash"
+FULL_DEMO = os.getenv("FULL_DEMO", "").lower() in {"1", "true", "yes", "y"}
+MAX_RETRIES = int(os.getenv("GEMINI_MAX_RETRIES", "1"))
+
+
+def get_retry_delay_seconds(error: errors.APIError) -> float:
+    """API 오류 응답에서 권장 재시도 대기 시간을 가져온다."""
+    if isinstance(error.details, dict):
+        for detail in error.details.get("error", {}).get("details", []):
+            retry_delay = detail.get("retryDelay")
+            if retry_delay:
+                match = re.fullmatch(r"(\d+(?:\.\d+)?)s", retry_delay)
+                if match:
+                    return float(match.group(1)) + 1
+
+    if error.message:
+        match = re.search(r"retry in (\d+(?:\.\d+)?)s", error.message, re.I)
+        if match:
+            return float(match.group(1)) + 1
+
+    return 15.0
+
+
+def format_api_error(error: errors.APIError) -> str:
+    """실습이 중단되지 않도록 API 오류를 짧은 안내 문자열로 바꾼다."""
+    if error.code == 429:
+        return "[요청 한도 초과: 1분 정도 기다린 뒤 다시 실행하세요]"
+
+    return f"[API 오류 {error.code} {error.status}: {error.message}]"
+
+
+def generate_response(prompt: str, **kwargs) -> types.GenerateContentResponse:
+    """파라미터를 넘겨 Gemini 응답 객체를 생성한다."""
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            return client.models.generate_content(
+                model=MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(**kwargs),
+            )
+        except errors.APIError as error:
+            can_retry = error.code == 429 and attempt < MAX_RETRIES
+            if not can_retry:
+                raise
+
+            delay = get_retry_delay_seconds(error)
+            print(f"  [quota] 요청 한도 초과. {delay:.1f}초 대기 후 재시도합니다...")
+            time.sleep(delay)
+
+    raise RuntimeError("Gemini API 요청 재시도에 실패했습니다.")
+
+
+def get_finish_reason(response: types.GenerateContentResponse) -> str:
+    """첫 번째 후보의 종료 이유를 읽기 쉬운 문자열로 반환한다."""
+    if response.candidates:
+        reason = response.candidates[0].finish_reason
+        if reason is None:
+            return "UNKNOWN"
+        return getattr(reason, "name", str(reason))
+
+    prompt_feedback = getattr(response, "prompt_feedback", None)
+    block_reason = getattr(prompt_feedback, "block_reason", None)
+    if block_reason:
+        return f"PROMPT_BLOCKED/{getattr(block_reason, 'name', block_reason)}"
+
+    return "UNKNOWN"
+
+
+def extract_text(response: types.GenerateContentResponse) -> str:
+    """텍스트가 없는 응답도 실습 출력에서 확인할 수 있게 처리한다."""
+    text = response.text
+    if text is not None:
+        return text
+
+    return f"[텍스트 응답 없음: finish_reason={get_finish_reason(response)}]"
 
 
 def generate(prompt: str, **kwargs) -> str:
     """파라미터를 넘겨 텍스트를 생성한다."""
-    response = client.models.generate_content(
-        model=MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(**kwargs),
-    )
-    return response.text
+    try:
+        return extract_text(generate_response(prompt, **kwargs))
+    except errors.APIError as error:
+        return format_api_error(error)
+
+
+def generate_with_finish(prompt: str, **kwargs) -> tuple[str, str]:
+    """텍스트와 finish_reason을 함께 반환한다."""
+    try:
+        response = generate_response(prompt, **kwargs)
+    except errors.APIError as error:
+        return format_api_error(error), f"API_ERROR/{error.status or error.code}"
+
+    return extract_text(response), get_finish_reason(response)
 
 
 # ── 1. temperature 비교 ────────────────────────────────────────────────
@@ -32,12 +116,13 @@ def compare_temperature():
     print("=" * 60)
 
     prompt = "새로운 카페 이름을 하나 제안해주세요. 이름만 답해주세요."
-    temps = [0.0, 0.5, 1.0, 1.5, 2.0]
+    temps = [0.0, 0.5, 1.0, 1.5, 2.0] if FULL_DEMO else [0.0, 1.0, 2.0]
+    repeat_count = 3 if FULL_DEMO else 1
 
     for temp in temps:
-        # 같은 온도로 3번 반복해 일관성 확인
+        # 같은 온도로 반복해 일관성 확인
         results = []
-        for _ in range(3):
+        for _ in range(repeat_count):
             text = generate(prompt, temperature=temp, max_output_tokens=30)
             results.append(text.strip()[:20])
         print(f"  temperature={temp:.1f}: {' | '.join(results)}")
@@ -50,18 +135,14 @@ def compare_max_tokens():
     print("=" * 60)
 
     prompt = "Python의 주요 특징을 설명해주세요."
-    token_limits = [30, 100, 300]
+    token_limits = [30, 100, 300] if FULL_DEMO else [100]
 
     for limit in token_limits:
-        text = generate(prompt, max_output_tokens=limit, temperature=0.3)
-        finish = client.models.generate_content(
-            model=MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                max_output_tokens=limit,
-                temperature=0.3,
-            ),
-        ).candidates[0].finish_reason
+        text, finish = generate_with_finish(
+            prompt,
+            max_output_tokens=limit,
+            temperature=0.3,
+        )
 
         print(f"\n  max_output_tokens={limit} (finish_reason={finish}):")
         print(f"  {text[:120]}{'...' if len(text) > 120 else ''}")
@@ -74,11 +155,12 @@ def compare_top_p():
     print("=" * 60)
 
     prompt = "하늘을 묘사하는 형용사 하나만 답해주세요."
-    top_p_values = [0.5, 0.9, 1.0]
+    top_p_values = [0.5, 0.9, 1.0] if FULL_DEMO else [0.9]
+    repeat_count = 5 if FULL_DEMO else 1
 
     for top_p in top_p_values:
         results = set()
-        for _ in range(5):
+        for _ in range(repeat_count):
             text = generate(
                 prompt,
                 temperature=1.0,
@@ -86,7 +168,10 @@ def compare_top_p():
                 max_output_tokens=10,
             )
             results.add(text.strip())
-        print(f"  top_p={top_p}: 5회 중 {len(results)}가지 다른 답변 -> {results}")
+        print(
+            f"  top_p={top_p}: {repeat_count}회 중 "
+            f"{len(results)}가지 다른 답변 -> {results}"
+        )
 
 
 # ── 4. stop_sequences 실습 ─────────────────────────────────────────────
@@ -178,13 +263,22 @@ def main():
     print("=" * 60)
     print("  18교시: 제어 파라미터 실습")
     print("=" * 60)
+    if FULL_DEMO:
+        print("  전체 실습 모드: API 요청이 많아 quota 대기가 발생할 수 있습니다.")
+    else:
+        print("  기본 실습 모드: 무료 티어 보호를 위해 API 요청을 5회로 제한합니다.")
 
     compare_temperature()
     compare_max_tokens()
     compare_top_p()
-    stop_sequences_demo()
-    recipe_demo()
-    parameter_tuning_experiment()
+
+    if FULL_DEMO:
+        stop_sequences_demo()
+        recipe_demo()
+        parameter_tuning_experiment()
+    else:
+        print("\n[4~6] 기본 실습 모드에서는 요청 한도 보호를 위해 생략합니다.")
+        print("  전체 실습 실행: $env:FULL_DEMO='1'; python main.py")
 
     print("\n" + "=" * 60)
     print("  다음 시간: 싱글턴 vs 멀티턴 대화 구현!")
