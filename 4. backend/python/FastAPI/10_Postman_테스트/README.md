@@ -20,6 +20,18 @@ paginate: true
 - Tests와 Pre-request Script로 반복 테스트를 자동화할 수 있다
 
 ---
+## [Postman](https://www.postman.com/)
+
+| 항목 | 설명 |
+|---|---|
+| Postman | API를 테스트하고 관리할 수 있는 API 개발 도구 |
+| 주요 기능 | API 요청 전송, 응답 확인, 자동 테스트 |
+| 지원 방식 | REST, GraphQL, WebSocket 등 |
+| 장점 | 코드 없이 API 테스트 가능, 협업 기능 제공 |
+| 단점 | 복잡한 자동화에는 별도 설정 필요 |
+| 주요 사용처 | 백엔드 개발, 프론트엔드 연동 테스트, API 문서 검증 |
+
+---
 ## 1. 현재 프로젝트 API 구조
 
 | 기능 | Method | Path | 인증 | 확인 포인트 |
