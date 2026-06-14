@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "쇼핑몰 REST API",
-    "description": "09_Swagger_API문서화의 FastAPI 서버 테스트 컬렉션\n\n사용 전 Environment에서 base_url을 설정하세요.\n기본값: http://localhost:8000",
+    "description": "10_Postman_테스트의 FastAPI 서버 테스트 컬렉션\n\n사용 전 Environment에서 base_url을 설정하세요.\n기본값: http://localhost:8000",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
