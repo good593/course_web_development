@@ -8,10 +8,12 @@
 import re
 from typing import Any
 
+from fastapi import FastAPI, HTTPException
 from ollama import ResponseError, chat
+from pydantic import BaseModel, Field
 
 
-CODE_MODEL = "gemma4"
+CODE_MODEL = "gemma4:e4b"
 THINKING_TOKEN = "<|think|>"
 
 # Ollama gemma4 페이지의 권장 샘플링 설정입니다.
@@ -33,6 +35,56 @@ SYSTEM_PROMPT = """당신은 FastAPI 전문가입니다.
 6. 코드는 반드시 ```python ... ``` 블록으로 감싸세요
 7. 실행 가능한 완성된 코드를 생성하세요
 """
+
+
+class GenerateCodeRequest(BaseModel):
+    """API 코드 생성을 요청할 때 사용하는 입력 스키마입니다."""
+
+    requirements: str = Field(..., min_length=1, description="생성할 API 요구사항")
+    thinking: bool = Field(False, description="gemma4 thinking 모드 사용 여부")
+    num_predict: int = Field(8192, ge=128, le=32768, description="최대 생성 토큰 수")
+
+
+class GenerateCodeResponse(BaseModel):
+    """API 코드 생성 결과 응답 스키마입니다."""
+
+    model: str
+    content: str
+
+
+app = FastAPI(
+    title="FastAPI 코드 자동 생성기",
+    description="Ollama gemma4로 FastAPI/Pydantic 코드 초안을 생성합니다.",
+    version="0.1.0",
+)
+
+
+@app.get("/")
+def read_root() -> dict[str, str]:
+    """서버 상태와 사용 모델을 확인합니다."""
+    return {
+        "status": "ok",
+        "model": CODE_MODEL,
+        "docs": "/docs",
+    }
+
+
+@app.post("/generate", response_model=GenerateCodeResponse)
+def generate_code_endpoint(request: GenerateCodeRequest) -> GenerateCodeResponse:
+    """요구사항을 받아 FastAPI 코드 초안을 생성합니다."""
+    try:
+        content = generate_api_code(
+            request.requirements,
+            thinking=request.thinking,
+            num_predict=request.num_predict,
+        )
+    except ResponseError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="Ollama 호출에 실패했습니다. Ollama 실행 상태와 모델 설치 여부를 확인하세요.",
+        ) from error
+
+    return GenerateCodeResponse(model=CODE_MODEL, content=content)
 
 
 def get_field(value: Any, name: str, default: Any = None) -> Any:
@@ -124,6 +176,7 @@ def generate_api_code(
     requirements: str,
     *,
     thinking: bool = False,
+    num_predict: int = 8192,
 ) -> str:
     """자연어 요구사항을 받아 FastAPI 코드를 생성합니다."""
     print("=" * 60)
@@ -134,7 +187,7 @@ def generate_api_code(
         f"다음 API를 구현해줘:\n\n{requirements}",
         thinking=thinking,
     )
-    return stream_completion(messages)
+    return stream_completion(messages, num_predict=num_predict)
 
 
 def extract_and_save_code(content: str, filename: str = "generated_api.py") -> bool:
