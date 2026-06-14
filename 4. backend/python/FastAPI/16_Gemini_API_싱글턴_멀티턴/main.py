@@ -7,12 +7,64 @@
 import os
 from dotenv import load_dotenv
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 load_dotenv()
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-MODEL = "gemini-3.5-flash"
+MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+api_request_count = 0
+
+
+def _extract_retry_delay(exc: errors.ClientError) -> str | None:
+    details = exc.details if isinstance(exc.details, dict) else {}
+    error_details = details.get("details") or details.get("error", {}).get("details", [])
+
+    for item in error_details:
+        if item.get("@type", "").endswith("RetryInfo"):
+            return item.get("retryDelay")
+    return None
+
+
+def _print_quota_error(exc: errors.ClientError) -> None:
+    print("\n[Gemini API 할당량 초과]")
+    print(f"  모델: {MODEL}")
+    print(f"  이번 실행에서 보낸 요청 수: {api_request_count}회")
+
+    retry_delay = _extract_retry_delay(exc)
+    if retry_delay:
+        print(f"  잠시 후 재시도 가능: 약 {retry_delay}")
+
+    print("  해결: 잠시 기다렸다가 다시 실행하거나, Google AI Studio에서 사용량/결제를 확인하세요.")
+    print("  참고: 이 실습은 여러 예제를 한 번에 실행하므로 요청 수가 빠르게 늘어납니다.")
+
+
+def run_api_request(description: str, callback):
+    global api_request_count
+    api_request_count += 1
+
+    try:
+        return callback()
+    except errors.ClientError as exc:
+        if exc.code == 429:
+            print(f"\n요청 실패 위치: {description}")
+            _print_quota_error(exc)
+            raise SystemExit(1) from exc
+        raise
+
+
+def stream_api_request(description: str, callback):
+    global api_request_count
+    api_request_count += 1
+
+    try:
+        yield from callback()
+    except errors.ClientError as exc:
+        if exc.code == 429:
+            print(f"\n요청 실패 위치: {description}")
+            _print_quota_error(exc)
+            raise SystemExit(1) from exc
+        raise
 
 
 # ── 1. 싱글턴 — 대화를 기억하지 못함 ─────────────────────────────────
@@ -24,14 +76,16 @@ def demo_single_turn():
     questions = [
         "파이썬이 뭐야? 한 문장으로 답해줘.",
         "방금 말한 것보다 더 쉽게 설명해줘.",     # '방금 말한 것' = 모름
-        "예시 코드도 짧게 줘.",                   # 무슨 코드인지 모름
     ]
 
     for i, q in enumerate(questions, 1):
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=q,
-            config=types.GenerateContentConfig(max_output_tokens=150),
+        response = run_api_request(
+            f"싱글턴 Q{i}",
+            lambda q=q: client.models.generate_content(
+                model=MODEL,
+                contents=q,
+                config=types.GenerateContentConfig(max_output_tokens=150),
+            ),
         )
         print(f"\n  Q{i}: {q}")
         print(f"  A{i}: {response.text.strip()[:120]}")
@@ -54,11 +108,13 @@ def demo_multi_turn():
         "파이썬이 뭐야? 한 문장으로 답해줘.",
         "방금 말한 것보다 더 쉽게 설명해줘.",
         "예시 코드도 짧게 줘.",
-        "그 코드에서 변수명을 바꾸면 어떻게 되?",
     ]
 
     for i, msg in enumerate(conversations, 1):
-        response = chat.send_message(msg)
+        response = run_api_request(
+            f"멀티턴 Q{i}",
+            lambda msg=msg: chat.send_message(msg),
+        )
         print(f"\n  Q{i}: {msg}")
         print(f"  A{i}: {response.text.strip()[:150]}")
 
@@ -92,11 +148,13 @@ def demo_system_instruction_chat():
     messages = [
         "안녕! 나는 파이썬을 배우고 싶어.",
         "리스트가 뭐야?",
-        "딕셔너리랑 차이가 뭔데?",
     ]
 
     for msg in messages:
-        response = chat.send_message(msg)
+        response = run_api_request(
+            "시스템 지시문 멀티턴",
+            lambda msg=msg: chat.send_message(msg),
+        )
         print(f"\n  나: {msg}")
         print(f"  코딩 요정: {response.text.strip()[:180]}")
 
@@ -113,10 +171,13 @@ def demo_manual_history():
         history.append(
             types.Content(role="user", parts=[types.Part(text=user_message)])
         )
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=history,
-            config=types.GenerateContentConfig(max_output_tokens=150),
+        response = run_api_request(
+            "수동 기록 관리",
+            lambda: client.models.generate_content(
+                model=MODEL,
+                contents=history,
+                config=types.GenerateContentConfig(max_output_tokens=150),
+            ),
         )
         answer = response.text
         history.append(
@@ -127,7 +188,6 @@ def demo_manual_history():
     turns = [
         "제일 좋아하는 프로그래밍 언어를 골라줘.",
         "왜 그 언어를 골랐어?",
-        "단점은 없어?",
     ]
 
     for msg in turns:
@@ -148,10 +208,13 @@ def demo_streaming():
 
     print("\n  [싱글턴 스트리밍]")
     print("  AI: ", end="", flush=True)
-    for chunk in client.models.generate_content_stream(
-        model=MODEL,
-        contents="파이썬의 장점을 50자 이내로 설명해줘.",
-        config=types.GenerateContentConfig(max_output_tokens=100),
+    for chunk in stream_api_request(
+        "싱글턴 스트리밍",
+        lambda: client.models.generate_content_stream(
+            model=MODEL,
+            contents="파이썬의 장점을 50자 이내로 설명해줘.",
+            config=types.GenerateContentConfig(max_output_tokens=100),
+        ),
     ):
         print(chunk.text, end="", flush=True)
     print()
@@ -160,11 +223,17 @@ def demo_streaming():
     chat = client.chats.create(model=MODEL)
 
     # 첫 메시지 (문맥 설정)
-    chat.send_message("자바스크립트에 대해 얘기해볼게.")
+    run_api_request(
+        "멀티턴 스트리밍 문맥 설정",
+        lambda: chat.send_message("자바스크립트에 대해 얘기해볼게."),
+    )
 
     print("  AI: ", end="", flush=True)
-    for chunk in chat.send_message_stream(
-        "방금 말한 언어의 단점을 50자 이내로 알려줘.",
+    for chunk in stream_api_request(
+        "멀티턴 스트리밍",
+        lambda: chat.send_message_stream(
+            "방금 말한 언어의 단점을 50자 이내로 알려줘.",
+        ),
     ):
         print(chunk.text, end="", flush=True)
     print()
@@ -181,13 +250,14 @@ def demo_context_growth():
         "숫자 1을 영어로?",
         "숫자 2를 영어로?",
         "숫자 3을 영어로?",
-        "숫자 4를 영어로?",
-        "숫자 5를 영어로?",
     ]
 
     total_so_far = 0
     for i, q in enumerate(short_questions, 1):
-        response = chat.send_message(q)
+        response = run_api_request(
+            f"컨텍스트 성장 {i}회",
+            lambda q=q: chat.send_message(q),
+        )
         usage = response.usage_metadata
         total_so_far = usage.total_token_count
         print(
@@ -214,6 +284,7 @@ def main():
     demo_context_growth()
 
     print("\n" + "=" * 60)
+    print(f"  이번 실행 API 요청 수: {api_request_count}회")
     print("  다음 시간: FastAPI + Gemini 연동!")
     print("=" * 60)
 
