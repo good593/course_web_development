@@ -1,4 +1,4 @@
--- 2교시 실습 스키마: 사용자 - 대화 - 메시지
+-- 실습 스키마: 사용자 - 대화 - 메시지
 -- Supabase SQL Editor에서 실행합니다.
 
 -- 기존 테이블이 있으면 삭제 (FK 참조 역순)
@@ -38,7 +38,7 @@ create index if not exists idx_conversations_user_id
 create index if not exists idx_messages_conversation_id_created_at
   on public.messages(conversation_id, created_at);
 
--- RLS 활성화 (2~3교시는 service_role로만 접근)
+-- RLS 활성화 (service_role로만 접근)
 alter table public.app_users enable row level security;
 alter table public.conversations enable row level security;
 alter table public.messages enable row level security;
