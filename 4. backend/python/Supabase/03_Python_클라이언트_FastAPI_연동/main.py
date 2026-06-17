@@ -1,11 +1,8 @@
 """
-4교시 실습: Supabase Python 클라이언트와 FastAPI 첫 연동
+Supabase Python 클라이언트와 FastAPI 첫 연동
 
 실행:
-  pip install -r requirements.txt
-  copy .env.example .env
-  # .env 파일에 SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY 입력
-  uvicorn main:app --reload
+  uvicorn main:app --reload --port 8001
 """
 
 import os
