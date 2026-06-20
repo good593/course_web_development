@@ -1,10 +1,17 @@
-# 4교시: Pydantic 스키마 설계와 Repository 패턴
-
-**소요시간:** 90분 (이론 35분 + 실습 55분)  
-**사전 지식:** 3교시(Python 클라이언트 연동), Pydantic 기초, FastAPI Depends
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# Pydantic 스키마 설계와 Repository 패턴
 
 ---
-
 ## 학습 목표
 
 - `Field`로 입력값에 세밀한 제약을 추가한다
@@ -14,21 +21,7 @@
 - `Depends`로 Repository를 의존성 주입한다
 
 ---
-
-## 1. 3교시와 4교시 비교
-
-3교시에서는 동작하는 API를 만들었지만, 코드 구조가 개선될 여지가 있습니다.
-
-| 비교 항목 | 3교시 | 4교시 |
-|-----------|-------|-------|
-| 코드 위치 | 엔드포인트에 쿼리 직접 | Repository 클래스에 분리 |
-| 입력 검증 | 기본 타입 체크 | Field 제약, Literal |
-| 오류 처리 | if/raise 반복 | `one_or_404` 헬퍼 재사용 |
-| 의존성 주입 | supabase 전역 변수 | `Depends(get_repo)` |
-
----
-
-## 2. Pydantic Field 제약
+## 1. Pydantic Field 제약
 
 `Field`를 사용하면 입력값에 세밀한 규칙을 설정할 수 있습니다.
 
@@ -43,6 +36,7 @@ class UserCreate(BaseModel):
     display_name: str = Field(..., min_length=1, max_length=50)
 ```
 
+---
 | 파라미터 | 의미 | 예시 |
 |---------|------|------|
 | `...` | 필수 필드 (생략 불가) | `Field(...)` |
@@ -54,8 +48,8 @@ class UserCreate(BaseModel):
 | `gt` | 초과 | `Field(..., gt=0)` |
 | `lt` | 미만 | `Field(..., lt=1000)` |
 
+---
 ### Literal 타입 — 허용 값 목록
-
 ```python
 from typing import Literal
 
@@ -66,8 +60,7 @@ class MessageCreate(BaseModel):
 ```
 
 ---
-
-## 3. 422 Unprocessable Entity
+## 2. 422 Unprocessable Entity
 
 입력값이 Pydantic 검증을 통과하지 못하면 FastAPI가 자동으로 422를 반환합니다.
 
@@ -86,6 +79,7 @@ class MessageCreate(BaseModel):
 }
 ```
 
+---
 | 검증 규칙 위반 | HTTP 상태 | 오류 type |
 |--------------|-----------|-----------|
 | `min_length` 미달 | 422 | `string_too_short` |
@@ -94,6 +88,7 @@ class MessageCreate(BaseModel):
 | 필수 필드 누락 | 422 | `missing` |
 | 타입 불일치 | 422 | `type_error` |
 
+---
 ### Swagger에서 422 테스트
 
 1. `POST /users` 클릭 → **Try it out**
@@ -102,15 +97,15 @@ class MessageCreate(BaseModel):
 4. `detail` 배열에서 어느 필드가 왜 실패했는지 확인
 
 ---
-
-## 4. Repository 패턴이란
+## 3. Repository 패턴이란
 
 Repository 패턴은 **데이터 접근 코드를 별도 클래스에 모으는** 설계 패턴입니다.
 
-### 패턴 없이 (3교시 방식)
+---
+### Repository 패턴 없이 (비추천)
+> 엔드포인트마다 쿼리 코드가 직접 들어감
 
 ```python
-# ❌ 엔드포인트마다 쿼리 코드가 직접 들어감
 @app.post("/users", status_code=201)
 def create_user(data: UserCreate):
     result = (
@@ -123,24 +118,14 @@ def create_user(data: UserCreate):
         raise HTTPException(500, "저장 실패")
     return result.data[0]
 
-@app.get("/users/{user_id}")
-def get_user(user_id: str):
-    result = (
-        supabase.table("app_users")
-        .select("*")
-        .eq("id", user_id)
-        .execute()
-    )
-    if not result.data:
-        raise HTTPException(404, "사용자 없음")
-    return result.data[0]
 # 패턴 반복...
 ```
 
-### Repository 패턴 적용
+---
+### Repository 패턴 적용 (추천)
+> Repository 클래스에 쿼리 로직을 모음
 
 ```python
-# ✅ Repository 클래스에 쿼리 로직을 모음
 class SupabaseRepository:
     def __init__(self, db: Client):
         self.db = db
@@ -150,28 +135,12 @@ class SupabaseRepository:
             raise HTTPException(status_code=404, detail=detail)
         return rows[0]
 
-    def create_user(self, data: UserCreate) -> dict:
-        result = (
-            self.db.table("app_users")
-            .insert(data.model_dump())
-            .select("*")
-            .execute()
-        )
-        return self.one_or_404(result.data, "사용자가 생성되지 않았습니다")
-
-    def get_user(self, user_id: str) -> dict:
-        result = (
-            self.db.table("app_users")
-            .select("*")
-            .eq("id", user_id)
-            .limit(1)
-            .execute()
-        )
-        return self.one_or_404(result.data, "사용자를 찾을 수 없습니다")
+    ...
 ```
 
+---
+> 엔드포인트는 경로·상태코드·흐름만 담당
 ```python
-# ✅ 엔드포인트는 경로·상태코드·흐름만 담당
 @app.post("/users", status_code=201, tags=["Users"])
 def create_user(data: UserCreate, repo: SupabaseRepository = Depends(get_repo)):
     return repo.create_user(data)
@@ -181,6 +150,7 @@ def get_user(user_id: str, repo: SupabaseRepository = Depends(get_repo)):
     return repo.get_user(user_id)
 ```
 
+---
 ### Repository 패턴의 장점
 
 | 장점 | 설명 |
@@ -191,8 +161,7 @@ def get_user(user_id: str, repo: SupabaseRepository = Depends(get_repo)):
 | 테스트 용이 | Repository만 교체해서 테스트 가능 |
 
 ---
-
-## 5. one_or_404 헬퍼
+## 4. one_or_404 헬퍼
 
 ```python
 def one_or_404(self, rows: list[dict], detail: str) -> dict:
@@ -202,7 +171,6 @@ def one_or_404(self, rows: list[dict], detail: str) -> dict:
 ```
 
 사용 예:
-
 ```python
 # 사용자 조회 — 없으면 404
 result = self.db.table("app_users").select("*").eq("id", user_id).execute()
@@ -214,10 +182,8 @@ return self.one_or_404(result.data, "대화방을 찾을 수 없습니다")
 ```
 
 ---
-
-## 6. 의존성 주입 (Depends)
-
-Repository를 `Depends`로 주입하면 엔드포인트마다 `SupabaseRepository(supabase)`를 쓰지 않아도 됩니다.
+## 5. 의존성 주입 (Depends)
+> Repository를 `Depends`로 주입하면 엔드포인트마다 `SupabaseRepository(supabase)`를 쓰지 않아도 됩니다.
 
 ```python
 from fastapi import Depends
@@ -235,26 +201,26 @@ def get_user(
     return repo.get_user(user_id)
 ```
 
+---
 ### Depends 없이 vs Depends 사용
-
+> Depends 없이 — 엔드포인트마다 직접 생성
 ```python
-# ❌ Depends 없이 — 엔드포인트마다 직접 생성
 @app.get("/users/{user_id}")
 def get_user(user_id: str):
     repo = SupabaseRepository(supabase)  # 매번 반복
     return repo.get_user(user_id)
+```
 
-# ✅ Depends 사용 — 자동 주입
+> Depends 사용 — 자동 주입
+```python
 @app.get("/users/{user_id}")
 def get_user(user_id: str, repo: SupabaseRepository = Depends(get_repo)):
     return repo.get_user(user_id)  # repo를 어떻게 만드는지 신경 쓸 필요 없음
 ```
 
 ---
-
-## 7. 연관 데이터 사전 검증
-
-대화방을 만들 때 `user_id`가 실제로 존재하는지 먼저 확인합니다.
+## 6. 연관 데이터 사전 검증
+> 대화방을 만들 때 `user_id`가 실제로 존재하는지 먼저 확인합니다.
 
 ```python
 def create_conversation(self, user_id: str, data: ConversationCreate) -> dict:
@@ -271,6 +237,7 @@ def create_conversation(self, user_id: str, data: ConversationCreate) -> dict:
     return self.one_or_404(result.data, "대화방이 생성되지 않았습니다")
 ```
 
+---
 | 방법 | 장점 | 단점 |
 |------|------|------|
 | 사전 검증 없이 DB에 맡김 | 쿼리 한 번 절약 | FK 오류 메시지가 영어·기술적 |
@@ -284,8 +251,7 @@ FK 오류 메시지: "insert or update on table violates foreign key constraint"
 ```
 
 ---
-
-## 8. 이번 교시 API 목록
+## 7. 이번 교시 API 목록
 
 ```
 POST /users                              — 사용자 생성 (201)
@@ -297,6 +263,7 @@ POST /conversations/{id}/messages        — 메시지 저장 (201)
 GET  /conversations/{id}/messages        — 대화방 메시지 목록
 ```
 
+---
 ### Swagger 실습 순서
 
 1. `POST /users` → `{"username": "kim", "display_name": "김학생"}` → id 복사
@@ -306,58 +273,3 @@ GET  /conversations/{id}/messages        — 대화방 메시지 목록
 5. `POST /conversations/{conv_id}/messages` → `{"role": "user", "content": "첫 메시지"}`
 6. `POST /conversations/{conv_id}/messages` → `{"role": "bot", "content": "테스트"}` → **422** 확인 (role 오류)
 7. `GET /conversations/{conv_id}/messages` → 메시지 목록 확인
-
----
-
-## 9. 흔한 실수와 해결법
-
-| 오류 | 원인 | 해결 |
-|------|------|------|
-| 422 on `POST /users` | `username`이 2자 미만 | 2자 이상 username 사용 |
-| 422 on message | `role`이 Literal 외 값 | `user`, `assistant`, `system` 중 하나 |
-| 404 on `GET /users/{id}` | 없는 id 입력 | Supabase Table Editor에서 id 복사 |
-| `result.data` 빈 리스트 (insert) | `.select("*")` 누락 | `.insert(payload).select("*").execute()` |
-| 대화방 생성 404 | 없는 user_id | 먼저 사용자 생성 후 그 id 사용 |
-| `Depends` 동작 안 함 | 파라미터 타입 힌트 누락 | `repo: SupabaseRepository = Depends(get_repo)` |
-
----
-
-## 핵심 패턴 요약
-
-| 기능 | 코드 |
-|------|------|
-| 필수 필드 제약 | `Field(..., min_length=2, max_length=30)` |
-| 허용값 제한 | `Literal["user", "assistant", "system"]` |
-| 의존성 주입 | `repo: SupabaseRepository = Depends(get_repo)` |
-| 404 헬퍼 | `one_or_404(result.data, "설명")` |
-| 사전 검증 | `self.get_user(user_id)` before insert |
-| Pydantic → dict | `data.model_dump()` |
-
----
-
-## 실습 체크리스트
-
-- [ ] `POST /users` — Field 검증 위반 시 422 응답 확인
-- [ ] Swagger에서 422 detail 내용 이해
-- [ ] `GET /users/{없는id}` — 404 응답 확인
-- [ ] Repository 클래스에 `create_user`, `get_user` 구현 완료
-- [ ] `one_or_404` 헬퍼 함수 작동 확인
-- [ ] `Depends(get_repo)`로 엔드포인트에서 Repository 사용
-- [ ] `Literal["user", "assistant", "system"]` — 잘못된 role 입력 시 422 확인
-- [ ] 없는 user_id로 대화방 생성 시도 → 404 확인
-- [ ] 메시지 저장 후 목록 조회 성공
-
----
-
-## 퀴즈
-
-1. `Field(..., min_length=2)`에서 `...`의 의미는 무엇인가?
-2. `Literal["user", "assistant"]`를 쓰면 422 응답이 발생하는 경우는?
-3. Repository 패턴을 쓰면 엔드포인트 코드가 어떻게 달라지는가?
-4. `Depends(get_repo)`는 언제 `get_repo()`를 호출하는가?
-5. `one_or_404` 헬퍼가 없으면 어떤 코드를 매번 반복해야 하는가?
-6. `data.model_dump()`는 무엇을 반환하는가?
-
----
-
-[← 이전 교시](../03_Python_클라이언트_FastAPI_연동/강의자료.md) | [다음 교시 →](../05_CRUD_완성_오류처리_집계/강의자료.md)

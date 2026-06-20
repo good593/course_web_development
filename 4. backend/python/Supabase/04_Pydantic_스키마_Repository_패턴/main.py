@@ -1,18 +1,3 @@
-"""
-5교시 실습: Pydantic 스키마 설계와 Repository 패턴
-
-4교시와 비교:
-  - Pydantic Field 제약 추가 (min_length, max_length, Literal)
-  - Repository 클래스로 쿼리 로직 분리
-  - Depends로 Repository 의존성 주입
-  - one_or_404 헬퍼 함수
-
-실행:
-  pip install -r requirements.txt
-  copy .env.example .env
-  uvicorn main:app --reload
-"""
-
 import os
 from typing import Literal
 
