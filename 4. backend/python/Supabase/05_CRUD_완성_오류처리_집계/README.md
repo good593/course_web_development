@@ -1,20 +1,25 @@
-# 5교시: CRUD 완성 — PATCH·오류 처리·집계 API
-
-**소요시간:** 90분 (이론 25분 + 실습 65분)  
-**사전 지식:** 4교시(Pydantic + Repository), REST API 메서드 이해
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# CRUD 완성 — PATCH·오류 처리·집계 API
 
 ---
-
 ## 학습 목표
 
 - `PUT`과 `PATCH`의 차이를 설명하고 PATCH를 올바르게 구현한다
 - `model_dump(exclude_unset=True)`로 보내지 않은 필드를 필터링한다
 - 집계 API(`/summary`)에서 대화 수와 메시지 수를 계산한다
 - `Query` 파라미터로 메시지 조회 건수를 제한한다
-- 현재 방식(URL user_id)의 보안 한계를 이해하고 다음 교시 예고를 파악한다
 
 ---
-
 ## 1. PUT vs PATCH
 
 | 메서드 | 의미 | 동작 방식 |
@@ -22,8 +27,10 @@
 | PUT | 전체 교체 | 보내지 않은 필드는 null/기본값으로 초기화 |
 | PATCH | 부분 수정 | 보낸 필드만 수정, 나머지는 그대로 유지 |
 
+---
 ### PUT 방식 — 문제점
-
+> `display_name`만 바꾸고 싶어도 `username`을 함께 보내야 합니다.  
+> 만약 `username`을 빠뜨리면 null로 초기화될 위험이 있습니다.
 ```python
 # PUT /users/{id} — 전체를 보내야 함
 {
@@ -31,9 +38,6 @@
   "display_name": "김강사"  # display_name만 바꾸고 싶어도 username도 보내야 함
 }
 ```
-
-`display_name`만 바꾸고 싶어도 `username`을 함께 보내야 합니다.  
-만약 `username`을 빠뜨리면 null로 초기화될 위험이 있습니다.
 
 ### PATCH 방식 — 올바른 설계
 
@@ -45,10 +49,8 @@
 ```
 
 ---
-
 ## 2. PATCH 구현 — Optional 필드와 exclude_unset
-
-PATCH를 위한 Pydantic 스키마는 모든 필드를 Optional로 만듭니다.
+> PATCH를 위한 Pydantic 스키마는 모든 필드를 `Optional`로 만듭니다.
 
 ```python
 from typing import Optional
@@ -58,25 +60,28 @@ class UserUpdate(BaseModel):
     # 보내지 않으면 None, 보내면 값이 들어옴
 ```
 
-### model_dump(exclude_unset=True)
-
+---
+### [비추천] model_dump(): 보내지 않은 필드가 None으로 포함됨
 ```python
 # 요청: {"display_name": "김강사"}
 data = UserUpdate(display_name="김강사")
 
-# ❌ model_dump() — 보내지 않은 필드가 None으로 포함됨
+# model_dump() — 보내지 않은 필드가 None으로 포함됨
 data.model_dump()
 # {"display_name": "김강사"}  ← 이 경우엔 괜찮아 보이지만...
-
+```
+### [추천] model_dump(exclude_unset=True): 실제로 보낸 필드만
+```python
 # 예: username도 Optional이라면
 # data.model_dump() → {"username": None, "display_name": "김강사"}
 # → Supabase에 username=None으로 업데이트해서 데이터 손상!
 
-# ✅ model_dump(exclude_unset=True) — 실제로 보낸 필드만
+# model_dump(exclude_unset=True) — 실제로 보낸 필드만
 data.model_dump(exclude_unset=True)
 # {"display_name": "김강사"}  ← username 제외
 ```
 
+---
 ### Repository에서 PATCH 구현
 
 ```python
@@ -95,20 +100,21 @@ def update_user(self, user_id: str, data: UserUpdate) -> dict:
     return self.one_or_404(result.data, "사용자를 찾을 수 없습니다")
 ```
 
-### ⚠️ .select("*") 없으면 수정 전 데이터 반환
-
+---
+### .select("*") 없으면 수정 전 데이터 반환
+> .select("*") 없음 — result.data가 빈 리스트
 ```python
-# ❌ .select("*") 없음 — result.data가 빈 리스트
 result = self.db.table("app_users").update(payload).eq("id", user_id).execute()
 # result.data → []
+```
 
-# ✅ .select("*") 있음 — 수정된 행 반환
+> .select("*") 있음 — 수정된 행 반환
+```python
 result = self.db.table("app_users").update(payload).eq("id", user_id).select("*").execute()
 # result.data → [{"id": "...", "display_name": "김강사", ...}]
 ```
 
 ---
-
 ## 3. Query 파라미터로 메시지 개수 제한
 
 ```python
@@ -132,29 +138,16 @@ GET /conversations/{id}/messages?limit=20
 ```
 
 ---
-
 ## 4. 집계 API — Summary
 
 사용자가 몇 개의 대화방과 메시지를 가지고 있는지 요약합니다.
 
 ```python
-class ChatSummary(BaseModel):
-    user_id: str
-    conversation_count: int
-    message_count: int
-
-
 def summary(self, user_id: str) -> ChatSummary:
     conversations = self.list_conversations(user_id)
     message_count = 0
     for conv in conversations:
-        result = (
-            self.db.table("messages")
-            .select("id")
-            .eq("conversation_id", conv["id"])
-            .execute()
-        )
-        message_count += len(result.data)
+        ...
 
     return ChatSummary(
         user_id=user_id,
@@ -163,14 +156,7 @@ def summary(self, user_id: str) -> ChatSummary:
     )
 ```
 
-```python
-@app.get("/users/{user_id}/summary", response_model=ChatSummary, tags=["Users"])
-def get_summary(user_id: str, repo: SupabaseRepository = Depends(get_repo)):
-    return repo.summary(user_id)
-```
-
 ---
-
 ## 5. 완성된 API 목록
 
 ```
@@ -185,67 +171,7 @@ POST   /conversations/{conversation_id}/messages  — 메시지 저장 (201)
 GET    /conversations/{conversation_id}/messages  — 메시지 목록 (limit 파라미터)
 ```
 
-### 실습 순서
-
-1. 사용자 A, B 각각 생성
-2. A의 id로 대화방 2개 생성 (`CRUD 공부`, `AI 프로젝트`)
-3. 각 대화방에 user/assistant 메시지 번갈아 저장
-4. `PATCH /users/{A_id}` → `{"display_name": "김강사"}` 수정
-5. `GET /users/{A_id}` → display_name이 바뀐 것 확인
-6. `GET /users/{A_id}/summary` → 대화 수, 메시지 수 확인
-7. B의 id로 summary 요청 → 0건 확인
-
 ---
-
-## 6. 현재 방식의 보안 한계
-
-이 교시의 API는 **인증이 없습니다**.
-
-```
-GET /users/{user_id}/conversations
-```
-
-이 방식의 문제:
-
-```
-다른 사용자 A의 user_id를 알면?
-  ↓
-/users/A_id/conversations 요청
-  ↓
-서버가 막을 방법이 없음
-  ↓
-A의 대화 목록이 노출됨 — 개인정보 침해!
-```
-
-### 다음 교시에서의 해결 방법(6교시)
-
-```
-6교시: 로그인 → access_token 발급
-  ↓
-모든 요청에 Authorization: Bearer {token} 헤더
-  ↓
-FastAPI가 토큰에서 current_user.id 결정
-  ↓
-URL에 user_id를 넣지 않아도 됨
-  ↓
-다른 사람의 데이터에 접근 불가능
-```
-
----
-
-## 7. 흔한 실수와 해결법
-
-| 오류 | 원인 | 해결 |
-|------|------|------|
-| PATCH 후에도 이전 데이터 반환 | `.select("*")` 누락 | `.update(...).eq(...).select("*").execute()` |
-| PATCH로 None이 DB에 저장됨 | `exclude_unset=True` 미사용 | `data.model_dump(exclude_unset=True)` 사용 |
-| 400 "수정할 값이 없습니다" | 빈 바디로 PATCH 요청 | 적어도 한 필드는 포함해서 보내기 |
-| summary 값이 0 | user_id 없는 사용자로 요청 | 먼저 대화방과 메시지 저장 후 요청 |
-| limit 파라미터 422 | limit < 1 또는 > 100 | `ge=1, le=100` 범위 내로 설정 |
-| PATCH가 아닌 PUT으로 요청 | HTTP 메서드 오류 | Swagger에서 PATCH 선택 확인 |
-
----
-
 ## 핵심 패턴 요약
 
 | 기능 | 코드 |
@@ -256,31 +182,3 @@ URL에 user_id를 넣지 않아도 됨
 | Query 파라미터 | `limit: int = Query(default=50, ge=1, le=100)` |
 | 집계 | `len(result.data)` |
 | response_model | `@app.get(..., response_model=ChatSummary)` |
-
----
-
-## 실습 체크리스트
-
-- [ ] `PATCH /users/{id}` — display_name만 변경 후 확인
-- [ ] `PATCH /users/{id}` — 빈 바디 전송 → 400 확인
-- [ ] `PATCH /users/{id}` — 없는 id → 404 확인
-- [ ] `GET /conversations/{id}/messages?limit=2` — 2건만 반환 확인
-- [ ] `GET /conversations/{id}/messages?limit=0` — 422 확인
-- [ ] `GET /users/{id}/summary` — 정확한 대화·메시지 수 확인
-- [ ] 사용자 B summary → 0건 확인
-- [ ] `PATCH /conversations/{id}` — 제목 수정 후 확인
-
----
-
-## 퀴즈
-
-1. PUT과 PATCH의 차이를 예를 들어 설명하라.
-2. `model_dump(exclude_unset=True)`와 `model_dump()`의 차이는?
-3. `.update(payload).eq("id", id).execute()`에서 `.select("*")`를 빠뜨리면 어떤 문제가 생기는가?
-4. `Query(default=50, ge=1, le=100)` 파라미터에서 `limit=0`을 보내면 어떤 응답이 반환되는가?
-5. 이 교시 API에서 보안상 가장 큰 문제는 무엇인가?
-6. summary API에서 N+1 문제가 발생할 수 있는 부분은 어디인가?
-
----
-
-[← 이전 교시](../04_Pydantic_스키마_Repository_패턴/강의자료.md) | [다음 교시 →](../06_JWT_인증_Supabase_Auth/강의자료.md)

@@ -1,12 +1,3 @@
-"""
-2교시 실습: FastAPI + Supabase CRUD API
-
-실행:
-  pip install -r requirements.txt
-  copy .env.example .env
-  uvicorn main:app --reload
-"""
-
 import os
 from typing import Literal
 
