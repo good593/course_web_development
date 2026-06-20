@@ -1,65 +1,28 @@
-# 6교시: JWT 인증과 Supabase Auth 회원가입·로그인
-
-**소요시간:** 90분 (이론 35분 + 실습 55분)  
-**사전 지식:** 5교시(CRUD), HTTP 헤더 개념, Base64 인코딩 기초
+---
+style: |
+  img {
+    display: block;
+    float: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+marp: true
+paginate: true
+---
+# JWT 인증과 Supabase Auth 회원가입·로그인
 
 ---
-
 ## 학습 목표
-
-- 5교시의 URL 기반 user_id 방식이 왜 위험한지 설명한다
 - JWT(JSON Web Token)의 구조(헤더·페이로드·서명)를 이해한다
 - `access_token`과 `refresh_token`의 역할과 만료 시간을 구분한다
 - Supabase Auth로 이메일/비밀번호 회원가입과 로그인을 구현한다
 - `HTTPBearer`로 Bearer 토큰을 받아 현재 사용자를 결정한다
 
 ---
-
-## 1. 5교시 방식의 보안 문제
-
-5교시 API는 URL에 `user_id`를 직접 받았습니다.
-
-```http
-GET /users/{user_id}/conversations
-```
-
-이 방식이 왜 위험한가:
-
-```
-1. 사용자 A가 사용자 B의 user_id를 알아냄
-   (UUID는 random하지만 노출될 수 있음)
-
-2. GET /users/{B_user_id}/conversations 요청
-
-3. 서버가 막을 방법이 없음
-   (요청한 사람이 B인지 확인하지 않으므로)
-
-4. B의 대화 목록이 그대로 반환됨
-   → 개인정보 침해!
-```
-
-6교시의 해결 방법:
-
-```
-1. 회원가입 → email + password
-
-2. 로그인 → access_token 발급
-
-3. 모든 API 요청에 포함:
-   Authorization: Bearer eyJhbGciOi...
-
-4. FastAPI가 토큰을 검증 → current_user.id 결정
-
-5. URL에 user_id 없음 — 조작 불가능
-   GET /conversations  (내 것만 자동으로)
-```
-
----
-
-## 2. JWT란 무엇인가
-
+## 1. JWT란 무엇인가
 JWT(JSON Web Token)는 서버가 발급하는 **서명된 토큰**입니다.
 
+---
 ### 토큰 형태
 
 ```
@@ -76,6 +39,7 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 | 페이로드 (Payload) | `{"sub": "user-id", "exp": 1700000}` | 사용자 정보 + 만료 시간 |
 | 서명 (Signature) | `HMAC(헤더 + 페이로드, 비밀키)` | 위변조 방지 |
 
+---
 ### 페이로드는 Base64 인코딩 — 누구나 볼 수 있음
 
 ```python
@@ -90,6 +54,7 @@ print(json.loads(decoded))
 > **페이로드는 누구나 디코딩할 수 있습니다.**  
 > 민감한 정보(비밀번호, 카드번호)는 절대 페이로드에 넣지 않습니다.
 
+---
 ### 왜 안전한가 — 서명 검증
 
 ```
@@ -105,8 +70,7 @@ print(json.loads(decoded))
 ```
 
 ---
-
-## 3. access_token vs refresh_token
+## 2. access_token vs refresh_token
 
 Supabase Auth 로그인은 두 가지 토큰을 반환합니다.
 
@@ -118,6 +82,8 @@ Supabase Auth 로그인은 두 가지 토큰을 반환합니다.
 | 유출 시 | 1시간 후 자동 만료 | 즉시 무효화 조치 필요 |
 | 저장 위치 | 메모리 또는 session | HttpOnly 쿠키 또는 서버 |
 
+---
+### 전체 프로세스 
 ```
 로그인 → access_token (1시간) + refresh_token (7일)
 
@@ -131,9 +97,9 @@ refresh_token으로 새 access_token 발급 (재로그인 불필요)
 ```
 
 ---
+## 3. Supabase Auth 설정
 
-## 4. Supabase Auth 설정
-
+---
 ### 이메일 인증 비활성화 (개발용)
 
 Supabase Dashboard에서:
@@ -145,8 +111,7 @@ Supabase Dashboard에서:
 운영 환경에서는 반드시 켜야 합니다.
 
 ---
-
-## 5. 회원가입 구현
+## 4. 회원가입 구현
 
 ```python
 from pydantic import BaseModel, EmailStr, Field
@@ -154,12 +119,6 @@ from supabase import create_client
 
 def public_client():
     return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-class SignupRequest(BaseModel):
-    email: EmailStr            # 이메일 형식 자동 검증
-    password: str = Field(..., min_length=6, max_length=100)
-    display_name: str = Field(..., min_length=1, max_length=50)
-
 
 @app.post("/auth/signup", status_code=201)
 def signup(data: SignupRequest):
@@ -170,25 +129,14 @@ def signup(data: SignupRequest):
         })
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    if not result.user:
-        raise HTTPException(status_code=400, detail="회원가입에 실패했습니다")
-
-    user_id = str(result.user.id)
-    session = result.session  # 이메일 인증이 꺼져 있으면 바로 발급
-
-    return {
-        "user_id": user_id,
-        "email": data.email,
-        "access_token": session.access_token if session else None,
-        "email_confirm_required": session is None,
-    }
+    ...
 ```
 
+---
 ### EmailStr — 이메일 형식 자동 검증
 
 ```python
-# ✅ pydantic[email] 설치 필요
+# pydantic[email] 설치 필요
 # requirements.txt에 email-validator 포함
 
 from pydantic import EmailStr
@@ -198,15 +146,9 @@ class SignupRequest(BaseModel):
 ```
 
 ---
-
-## 6. 로그인 구현
-
+## 5. 로그인 구현
+> 응답에서 `access_token`을 복사해서 이후 요청에 사용합니다.
 ```python
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=6, max_length=100)
-
-
 @app.post("/auth/login")
 def login(data: LoginRequest):
     try:
@@ -217,22 +159,15 @@ def login(data: LoginRequest):
     except Exception as exc:
         raise HTTPException(status_code=401, detail="로그인에 실패했습니다") from exc
 
-    if not result.user or not result.session:
-        raise HTTPException(status_code=401, detail="로그인에 실패했습니다")
-
     return {
-        "user_id": str(result.user.id),
-        "email": result.user.email,
+        ...
         "access_token": result.session.access_token,
         "refresh_token": result.session.refresh_token,
         "token_type": "bearer",
     }
 ```
 
-> 응답에서 `access_token`을 복사해서 이후 요청에 사용합니다.
-
 ---
-
 ## 7. HTTPBearer — Bearer 토큰 받기
 
 ### 헤더 형식
@@ -240,9 +175,9 @@ def login(data: LoginRequest):
 ```http
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
+> `Bearer ` 다음에 access_token을 붙입니다. (공백 포함, 대소문자 중요)
 
-`Bearer ` 다음에 access_token을 붙입니다. (공백 포함, 대소문자 중요)
-
+---
 ### FastAPI HTTPBearer 설정
 
 ```python
@@ -266,16 +201,10 @@ def get_current_user(
         result = public_client().auth.get_user(token)
     except Exception as exc:
         raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다") from exc
-
-    if not result.user:
-        raise HTTPException(status_code=401, detail="로그인이 필요합니다")
-
-    return CurrentUser(
-        id=str(result.user.id),
-        email=result.user.email or "",
-    )
+...
 ```
 
+---
 ### 보호된 엔드포인트
 
 ```python
@@ -289,13 +218,12 @@ def get_me(current: CurrentUser = Depends(get_current_user)):
 ```
 
 ---
-
 ## 8. Swagger에서 Bearer 토큰 입력 방법
 
 ```
 1. POST /auth/login 실행 → 응답에서 "access_token" 값 복사
 
-2. Swagger UI 우측 상단 🔒 Authorize 버튼 클릭
+2. Swagger UI 우측 상단 Authorize 버튼 클릭
 
 3. Value 입력란에 입력:
    Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -310,7 +238,6 @@ def get_me(current: CurrentUser = Depends(get_current_user)):
 > `eyJhbGci...`만 입력하면 401이 발생합니다.
 
 ---
-
 ## 9. Swagger에서 토큰 없이 요청하면
 
 `HTTPBearer`가 설정된 엔드포인트에 토큰 없이 요청하면:
@@ -322,19 +249,10 @@ def get_me(current: CurrentUser = Depends(get_current_user)):
 }
 ```
 
-Swagger에서 🔒 자물쇠 아이콘이 닫혀 있으면 토큰이 설정된 상태입니다.
+Swagger에서 자물쇠 아이콘이 닫혀 있으면 토큰이 설정된 상태입니다.
 
 ---
-
-## 10. 이번 교시 API 목록
-
-```
-POST /auth/signup  — 회원가입
-POST /auth/login   — 로그인 + access_token 발급
-GET  /me           — 현재 사용자 정보 (인증 필요)
-```
-
-### 실습 순서
+## 10.  실습 순서
 
 1. Supabase Dashboard → Authentication → Email → "Confirm email" 끄기
 2. `.env`에 `SUPABASE_ANON_KEY` 추가
@@ -348,21 +266,6 @@ GET  /me           — 현재 사용자 정보 (인증 필요)
 10. A 토큰으로 `GET /me` → A 정보, B 토큰으로 → B 정보 확인
 
 ---
-
-## 11. 흔한 실수와 해결법
-
-| 오류 | 원인 | 해결 |
-|------|------|------|
-| 회원가입 후 `access_token: null` | 이메일 인증 켜져 있음 | Authentication → Email → "Confirm email" 끄기 |
-| `401 Not authenticated` | 토큰 없이 보호된 엔드포인트 요청 | Swagger Authorize에 Bearer 토큰 입력 |
-| `401 유효하지 않은 토큰` | 토큰 만료 또는 형식 오류 | 재로그인 후 새 토큰 사용 |
-| Swagger 401 계속 발생 | `Bearer ` 접두사 없이 입력 | `Bearer eyJ...` 전체 입력 |
-| `422` on signup | 이메일 형식 오류 또는 password < 6자 | 유효한 이메일과 6자 이상 비밀번호 |
-| `SUPABASE_ANON_KEY` 없음 | .env에 anon key 미입력 | Project Settings → API → anon public key 복사 |
-| `KeyError: 'SUPABASE_ANON_KEY'` | .env 파일에 해당 키 없음 | .env에 SUPABASE_ANON_KEY 추가 |
-
----
-
 ## 핵심 패턴 요약
 
 | 기능 | 코드 |
@@ -374,33 +277,3 @@ GET  /me           — 현재 사용자 정보 (인증 필요)
 | 현재 사용자 의존성 | `current: CurrentUser = Depends(get_current_user)` |
 | 이메일 검증 | `email: EmailStr` |
 | anon 클라이언트 | `create_client(URL, ANON_KEY)` |
-
----
-
-## 실습 체크리스트
-
-- [ ] Supabase → "Confirm email" 비활성화
-- [ ] `.env`에 `SUPABASE_ANON_KEY` 추가
-- [ ] `POST /auth/signup` 201 응답 확인
-- [ ] `POST /auth/login` 성공 및 `access_token` 확인
-- [ ] Swagger Authorize에 `Bearer {token}` 입력
-- [ ] `GET /me` — 현재 사용자 정보 확인
-- [ ] 토큰 없이 `GET /me` → 401 확인
-- [ ] 잘못된 이메일로 signup → 422 확인
-- [ ] 5자 비밀번호로 signup → 422 확인
-- [ ] 잘못된 비밀번호로 login → 401 확인
-
----
-
-## 퀴즈
-
-1. JWT 페이로드는 Base64로 누구나 디코딩할 수 있는데 왜 안전한가?
-2. `access_token`의 만료 시간이 짧은 이유는 무엇인가?
-3. `refresh_token`의 역할은 무엇인가?
-4. `HTTPBearer`와 `HTTPBasicAuth`의 차이는?
-5. Supabase에서 `anon` 키와 `service_role` 키 중 어떤 것으로 Auth 작업을 해야 하는가?
-6. 5교시에서 URL에 user_id를 받던 방식 대신 6교시 방식이 안전한 이유는?
-
----
-
-[← 이전 교시](../05_CRUD_완성_오류처리_집계/강의자료.md) | [다음 교시 →](../07_RLS_서버_접근_제어/강의자료.md)
