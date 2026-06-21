@@ -12,16 +12,6 @@ paginate: true
 # Supabase 프로젝트 설정과 ERD 설계
 
 ---
-## 학습 목표
-
-- AI 대화 서비스의 ERD를 3개 테이블로 설계한다
-- `on delete cascade`, `CHECK` 등 제약 조건을 설계에 반영하는 이유를 설명한다
-- Supabase 프로젝트를 생성하고 API 키를 확인한다
-- `service_role` 키와 `anon` 키의 용도와 보안 규칙을 구분한다
-
-> Supabase의 RDB는 **PostgreSQL**입니다. 앞으로 작성하는 SQL과 스키마는 PostgreSQL 문법을 그대로 사용합니다.
-
----
 ## [1. Supabase란](https://supabase.com/)
 
 Supabase는 **오픈소스 Firebase 대안**으로, PostgreSQL 데이터베이스와 인증·저장소·실시간 구독 기능을 함께 제공합니다.

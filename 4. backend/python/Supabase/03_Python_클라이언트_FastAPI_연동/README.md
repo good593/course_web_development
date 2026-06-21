@@ -12,15 +12,6 @@ paginate: true
 # Supabase Python 클라이언트와 FastAPI 연동
 
 ---
-## 학습 목표
-
-- `supabase-py` 클라이언트를 초기화하고 연결을 확인한다
-- `python-dotenv`로 `.env` 파일에서 API 키를 읽는다
-- Python 메서드와 SQL 문법을 1:1로 대응시켜 이해한다
-- INSERT, SELECT, 조건 조회를 Python 코드로 구현한다
-- FastAPI 엔드포인트에서 Supabase 데이터를 저장하고 응답한다
-
----
 ## 1. 가상환경 생성
 ```bash
 # pyproject.toml과 uv.lock 기준으로 의존성 설치
@@ -34,6 +25,7 @@ uv sync
 ---
 ### 왜 환경 변수를 써야 하는가
 
+> 해킹의 위험이 발생함 
 ```python
 # 하드코딩 — GitHub에 올리면 즉시 노출
 supabase = create_client(
@@ -41,7 +33,7 @@ supabase = create_client(
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
 )
 ```
-
+> 중요한 정보(키)를 코드에서 확인이 불가능함 -> 해킹 위험이 없음 
 ```python
 # 환경 변수 — 코드에 키가 없음
 import os
@@ -49,8 +41,7 @@ from dotenv import load_dotenv
 
 load_dotenv()  # .env 파일 읽기
 supabase = create_client(
-    os.environ["SUPABASE_URL"],
-    os.environ["SUPABASE_SERVICE_ROLE_KEY"],
+    os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"],
 )
 ```
 
@@ -63,7 +54,7 @@ supabase = create_client(
 ---
 ## 3. Supabase 클라이언트 vs SQL 비교
 
-`supabase-py`는 SQL을 Python 메서드 체이닝으로 표현합니다.
+`Supabase 클라이언트`는 SQL을 Python 메서드 체이닝으로 표현합니다.
 
 | SQL 문법 | Supabase 클라이언트 |
 |----------|--------------------|
@@ -79,7 +70,7 @@ supabase = create_client(
 |----------|--------------------|
 | `LIMIT 10` | `.limit(10)` |
 | `INSERT INTO ... VALUES (...)` | `.insert({...})` |
-| `INSERT ... RETURNING *` | `.insert({...}).select("*")` |
+| `INSERT ... RETURNING *` | `.insert({...})` (기본적으로 생성된 행 반환) |
 | `UPDATE ... SET ... WHERE` | `.update({...}).eq("id", id)` |
 | `DELETE FROM ... WHERE` | `.delete().eq("id", id)` |
 
@@ -114,7 +105,7 @@ data = UserCreate(username="kim", display_name="김학생")
 # .model_dump()로 딕셔너리로 변환
 payload = data.model_dump()  # {"username": "kim", "display_name": "김학생"}
 
-result = supabase.table("app_users").insert(payload).select("*").execute()
+result = supabase.table("app_users").insert(payload).execute()
 ```
 
 ---
@@ -183,10 +174,56 @@ uvicorn main:app --reload --port 8001
 ---
 ### Swagger UI 실습 (http://localhost:8001/docs)
 
-1. `POST /users` → Body에 `{"username": "cho", "display_name": "홍학생"}` → Execute
-2. `GET /users` → 3명 목록 확인
-3. `POST /conversations` → Body에 `{"user_id": "복사한-UUID", "title": "첫 대화"}` → Execute → `id` 복사
-4. `POST /conversations/{id}/messages` → Body에 `{"role": "user", "content": "안녕!"}` → Execute
-5. `POST /conversations/{id}/messages` → Body에 `{"role": "assistant", "content": "안녕하세요!"}` → Execute
-6. `GET /conversations/{id}/messages` → 메시지 2개 확인
-7. Supabase Table Editor에서 저장된 데이터 직접 확인
+---
+> `POST /users` → Body에 `{"username": "hong", "display_name": "홍길동"}` → Execute
+
+![alt text](./img/image-5.png)
+
+---
+![alt text](./img/image-6.png)
+
+---
+> `GET /users` 목록 확인
+
+![alt text](./img/image-7.png)
+
+---
+![alt text](./img/image-8.png)
+
+---
+> `GET /users` 목록 확인을 통해 user_id 복사 
+> `POST /conversations` → Body에 `{"user_id": "복사한-UUID", "title": "첫 대화"}` → Execute → `id` 복사
+
+![w:1000](./img/image-9.png)
+
+---
+![alt text](./img/image-10.png)
+
+---
+> `POST /conversations/{id}/messages` → Body에 `{"role": "user", "content": "안녕!"}` → Execute
+
+![w:1000](./img/image-11.png)
+
+---
+![alt text](./img/image-12.png)
+
+---
+> `POST /conversations/{id}/messages` → Body에 `{"role": "assistant", "content": "안녕하세요!"}` → Execute
+
+![w:1000](./img/image-13.png)
+
+---
+![alt text](./img/image-14.png)
+
+---
+> `GET /conversations/{id}/messages` → 메시지 2개 확인
+
+![alt text](./img/image-15.png)
+
+---
+![alt text](./img/image-16.png)
+
+---
+> Supabase Table Editor에서 저장된 데이터 직접 확인
+
+![alt text](./img/image-17.png)
