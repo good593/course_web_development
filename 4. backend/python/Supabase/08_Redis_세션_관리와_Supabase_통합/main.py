@@ -114,7 +114,6 @@ def upsert_profile(user_id: str, email: str, display_name: str) -> dict:
             "email": email,
             "display_name": display_name,
         })
-        .select("*")
         .execute()
     )
     return one_or_404(result.data, "프로필 저장에 실패했습니다")
@@ -282,7 +281,6 @@ def create_conversation(
         admin_client()
         .table("chat_conversations")
         .insert({"owner_id": session.user_id, "title": data.title})
-        .select("*")
         .execute()
     )
     return one_or_404(result.data, "대화방을 생성하지 못했습니다")
@@ -317,7 +315,6 @@ def create_message(
             "role": data.role,
             "content": data.content,
         })
-        .select("*")
         .execute()
     )
     message = one_or_404(result.data, "메시지를 저장하지 못했습니다")

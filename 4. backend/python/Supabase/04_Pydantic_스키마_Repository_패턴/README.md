@@ -12,15 +12,6 @@ paginate: true
 # Pydantic 스키마 설계와 Repository 패턴
 
 ---
-## 학습 목표
-
-- `Field`로 입력값에 세밀한 제약을 추가한다
-- `Literal` 타입으로 허용 값을 코드 레벨에서 제한한다
-- 422 응답의 구조를 이해하고 Swagger에서 확인한다
-- Repository 패턴으로 쿼리 로직과 엔드포인트를 분리한다
-- `Depends`로 Repository를 의존성 주입한다
-
----
 ## 1. Pydantic Field 제약
 
 `Field`를 사용하면 입력값에 세밀한 규칙을 설정할 수 있습니다.
@@ -111,7 +102,6 @@ def create_user(data: UserCreate):
     result = (
         supabase.table("app_users")
         .insert(data.model_dump())
-        .select("*")
         .execute()
     )
     if not result.data:
@@ -231,7 +221,6 @@ def create_conversation(self, user_id: str, data: ConversationCreate) -> dict:
     result = (
         self.db.table("conversations")
         .insert(payload)
-        .select("*")
         .execute()
     )
     return self.one_or_404(result.data, "대화방이 생성되지 않았습니다")
@@ -251,25 +240,137 @@ FK 오류 메시지: "insert or update on table violates foreign key constraint"
 ```
 
 ---
-## 7. 이번 교시 API 목록
+## 7. 서버 실행 및 Swagger 실습
 
+---
+### 가상환경 생성
+```bash
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
+uv sync
 ```
-POST /users                              — 사용자 생성 (201)
-GET  /users                              — 전체 사용자 목록
-GET  /users/{user_id}                    — 특정 사용자 조회
-POST /users/{user_id}/conversations      — 대화방 생성 (201)
-GET  /users/{user_id}/conversations      — 사용자별 대화 목록
-POST /conversations/{id}/messages        — 메시지 저장 (201)
-GET  /conversations/{id}/messages        — 대화방 메시지 목록
+
+### 서버 실행
+
+```bash
+# 1. .env 파일에 실제 키 입력
+# 2. 서버 실행
+uvicorn main:app --reload --port 8001
 ```
 
 ---
-### Swagger 실습 순서
+### Swagger UI 실습 (http://localhost:8001/docs)
 
-1. `POST /users` → `{"username": "kim", "display_name": "김학생"}` → id 복사
-2. `POST /users` → `{"username": "a"}` (username 1자) → **422** 응답 확인
-3. `GET /users/{존재하지않는id}` → **404** 응답 확인
-4. `POST /users/{kim_id}/conversations` → `{"title": "FastAPI 공부"}` → id 복사
-5. `POST /conversations/{conv_id}/messages` → `{"role": "user", "content": "첫 메시지"}`
-6. `POST /conversations/{conv_id}/messages` → `{"role": "bot", "content": "테스트"}` → **422** 확인 (role 오류)
-7. `GET /conversations/{conv_id}/messages` → 메시지 목록 확인
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
+
+---
+### 실습 1. 사용자 생성
+
+`POST /users` → Body에 `{"username": "hong", "display_name": "홍길동"}` → **Execute**
+→ `201 Created` 확인 → 응답의 `id`를 `USER_ID`로 복사
+
+![w:1000](./img/image.png)
+
+---
+![alt text](./img/image-1.png)
+
+---
+### 실습 2. Field 검증 실패
+
+`POST /users` → Body에 `{"username": "a", "display_name": "홍길동"}` → **Execute**
+→ `422 Unprocessable Entity` 확인 → 오류 type `string_too_short` 확인
+
+![w:1000](./img/image-2.png)
+
+---
+![alt text](./img/image-3.png)
+
+---
+### 실습 3. 사용자 목록 및 단건 조회
+
+`GET /users` → **Execute** → 전체 사용자 목록과 `200 OK` 확인
+
+![alt text](./img/image-4.png)
+
+---
+![alt text](./img/image-5.png)
+
+---
+`GET /users/{user_id}` → `user_id`에 `USER_ID` 입력 → **Execute** → 홍길동 정보 확인
+
+![alt text](./img/image-6.png)
+
+---
+![alt text](./img/image-7.png)
+
+---
+`GET /users/{user_id}` → `user_id`에 `00000000-0000-0000-0000-000000000000` 입력 → **Execute**
+→ `404 Not Found`와 `{"detail": "사용자를 찾을 수 없습니다"}` 확인
+
+![alt text](./img/image-8.png)
+
+---
+![alt text](./img/image-9.png)
+
+---
+### 실습 4. 대화방 생성
+
+`POST /users/{user_id}/conversations` → `user_id`에 `USER_ID` 입력 → Body에 `{"title": "FastAPI 공부"}` → **Execute**
+→ `201 Created` 확인 → 응답의 `id`를 `CONVERSATION_ID`로 복사
+
+![w:800](./img/image-10.png)
+
+---
+![alt text](./img/image-11.png)
+
+---
+`POST /users/{user_id}/conversations` → `user_id`에 `USER_ID` 입력 → Body에 `{}` → **Execute**
+→ 기본 제목이 `"새 대화"`인지 확인
+
+![w:900](./img/image-12.png)
+
+---
+![alt text](./img/image-13.png)
+
+---
+### 실습 5. 대화방 목록 조회
+
+`GET /users/{user_id}/conversations` → `user_id`에 `USER_ID` 입력 → **Execute**
+→ 대화방이 최신순으로 반환되는지 확인
+
+![alt text](./img/image-14.png)
+
+---
+![alt text](./img/image-15.png)
+
+---
+### 실습 6. 메시지 생성
+`POST /conversations/{conversation_id}/messages` → `conversation_id`에 `CONVERSATION_ID` 입력 → Body에 `{"role": "user", "content": "첫 메시지입니다."}` → **Execute**
+→ `201 Created` 확인
+
+![w:700](./img/image-16.png)
+
+---
+![alt text](./img/image-17.png)
+
+---
+### 실습 7. Literal 검증 실패
+
+`POST /conversations/{conversation_id}/messages` → `conversation_id`에 `CONVERSATION_ID` 입력 → Body에 `{"role": "bot", "content": "Literal 검증 테스트"}` → **Execute**
+→ `422 Unprocessable Entity` 확인 → 오류 type `literal_error` 확인
+
+![w:700](./img/image-18.png)
+
+---
+![alt text](./img/image-19.png)
+
+---
+### 실습 8. 메시지 목록 조회
+
+`GET /conversations/{conversation_id}/messages` → `conversation_id`에 `CONVERSATION_ID` 입력 → **Execute**
+→ 메시지가 오래된 순서로 반환되는지 확인
+
+![alt text](./img/image-20.png)
+
+---
+![alt text](./img/image-21.png)
+

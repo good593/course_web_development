@@ -68,7 +68,6 @@ class SupabaseRepository:
         result = (
             self.db.table("app_users")
             .insert(data.model_dump())
-            .select("*")
             .execute()
         )
         return self.one_or_404(result.data, "사용자가 생성되지 않았습니다")
@@ -91,7 +90,6 @@ class SupabaseRepository:
             self.db.table("app_users")
             .update(payload)
             .eq("id", user_id)
-            .select("*")
             .execute()
         )
         return self.one_or_404(result.data, "사용자를 찾을 수 없습니다")
@@ -102,7 +100,6 @@ class SupabaseRepository:
         result = (
             self.db.table("conversations")
             .insert(payload)
-            .select("*")
             .execute()
         )
         return self.one_or_404(result.data, "대화방이 생성되지 않았습니다")
@@ -133,7 +130,6 @@ class SupabaseRepository:
             self.db.table("conversations")
             .update(data.model_dump())
             .eq("id", conversation_id)
-            .select("*")
             .execute()
         )
         return self.one_or_404(result.data, "대화방을 찾을 수 없습니다")
@@ -144,7 +140,6 @@ class SupabaseRepository:
         result = (
             self.db.table("messages")
             .insert(payload)
-            .select("*")
             .execute()
         )
         return self.one_or_404(result.data, "메시지가 저장되지 않았습니다")

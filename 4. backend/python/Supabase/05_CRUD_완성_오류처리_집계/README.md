@@ -94,25 +94,20 @@ def update_user(self, user_id: str, data: UserUpdate) -> dict:
         self.db.table("app_users")
         .update(payload)
         .eq("id", user_id)
-        .select("*")
         .execute()
     )
     return self.one_or_404(result.data, "사용자를 찾을 수 없습니다")
 ```
 
 ---
-### .select("*") 없으면 수정 전 데이터 반환
-> .select("*") 없음 — result.data가 빈 리스트
+### update()는 수정된 행을 기본 반환
+> `supabase-py 2.x`의 `update()`는 수정된 행을 `result.data`로 기본 반환합니다.
 ```python
 result = self.db.table("app_users").update(payload).eq("id", user_id).execute()
-# result.data → []
-```
-
-> .select("*") 있음 — 수정된 행 반환
-```python
-result = self.db.table("app_users").update(payload).eq("id", user_id).select("*").execute()
 # result.data → [{"id": "...", "display_name": "김강사", ...}]
 ```
+
+> 쓰기 쿼리 뒤에 `.select("*")`를 연결하면 `AttributeError`가 발생하므로 바로 `.execute()`를 호출합니다.
 
 ---
 ## 3. Query 파라미터로 메시지 개수 제한
@@ -178,7 +173,7 @@ GET    /conversations/{conversation_id}/messages  — 메시지 목록 (limit �
 |------|------|
 | PATCH 스키마 | `Optional[str] = Field(default=None, ...)` |
 | 보낸 필드만 | `data.model_dump(exclude_unset=True)` |
-| 수정 + 반환 | `.update(payload).eq("id", id).select("*").execute()` |
+| 수정 + 반환 | `.update(payload).eq("id", id).execute()` |
 | Query 파라미터 | `limit: int = Query(default=50, ge=1, le=100)` |
 | 집계 | `len(result.data)` |
 | response_model | `@app.get(..., response_model=ChatSummary)` |
