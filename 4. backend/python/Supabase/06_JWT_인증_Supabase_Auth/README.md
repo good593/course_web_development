@@ -270,12 +270,12 @@ def get_me(current: CurrentUser = Depends(get_current_user)):
 ![alt text](./img/image-6.png)
 
 ---
-### Secret keys 추가 
+### SUPABASE_ANON_KEY 추가 
 
 ![alt text](./img/image-28.png)
 
 ---
-> 복사한  Secret keys를 `SUPABASE_ANON_KEY`에 추가 
+> 복사한 key를 `SUPABASE_ANON_KEY`에 추가 
 
 ![alt text](./img/image-29.png)
 
