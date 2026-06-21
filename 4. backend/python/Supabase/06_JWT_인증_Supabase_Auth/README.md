@@ -12,19 +12,11 @@ paginate: true
 # JWT 인증과 Supabase Auth 회원가입·로그인
 
 ---
-## 학습 목표
-- JWT(JSON Web Token)의 구조(헤더·페이로드·서명)를 이해한다
-- `access_token`과 `refresh_token`의 역할과 만료 시간을 구분한다
-- Supabase Auth로 이메일/비밀번호 회원가입과 로그인을 구현한다
-- `HTTPBearer`로 Bearer 토큰을 받아 현재 사용자를 결정한다
-
----
-## 1. JWT란 무엇인가
+## [1. JWT란 무엇인가](https://velog.io/@fill0006/JWTJSON-Web-Token-%EA%B5%AC%EC%A1%B0-%EB%B0%8F-%EC%9D%B4%ED%95%B4)
 JWT(JSON Web Token)는 서버가 발급하는 **서명된 토큰**입니다.
 
 ---
 ### 토큰 형태
-
 ```
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 .eyJ1c2VyX2lkIjoiYWJjIiwiZXhwIjoxNzAwMDAwMDAwfQ
@@ -38,6 +30,9 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 | 헤더 (Header) | `{"alg": "HS256", "typ": "JWT"}` | 알고리즘 정보 |
 | 페이로드 (Payload) | `{"sub": "user-id", "exp": 1700000}` | 사용자 정보 + 만료 시간 |
 | 서명 (Signature) | `HMAC(헤더 + 페이로드, 비밀키)` | 위변조 방지 |
+
+---
+![w:1100](./img/image.png)
 
 ---
 ### 페이로드는 Base64 인코딩 — 누구나 볼 수 있음
@@ -70,9 +65,13 @@ print(json.loads(decoded))
 ```
 
 ---
-## 2. access_token vs refresh_token
+### [JWT 동작 방식](https://bugglebuggle.tistory.com/20)
 
-Supabase Auth 로그인은 두 가지 토큰을 반환합니다.
+![alt text](./img/image-1.png)
+
+---
+## [2. access_token vs refresh_token](https://eleunadeu.tistory.com/75)
+> Supabase Auth 로그인은 두 가지 토큰을 반환합니다.
 
 | 항목 | access_token | refresh_token |
 |------|--------------|---------------|
@@ -95,6 +94,7 @@ refresh_token으로 새 access_token 발급 (재로그인 불필요)
   ↓
 다시 이메일/비밀번호로 로그인
 ```
+![bg right w:600](./img/image-2.png)
 
 ---
 ## 3. Supabase Auth 설정
@@ -102,13 +102,17 @@ refresh_token으로 새 access_token 발급 (재로그인 불필요)
 ---
 ### 이메일 인증 비활성화 (개발용)
 
-Supabase Dashboard에서:
-1. **Authentication** → **Providers** → **Email**
-2. **"Confirm email"** 옵션을 **끄기** (OFF)
-3. **Save** 클릭
+1. [Supabase Dashboard에서 프로젝트 선택](https://supabase.com/dashboard)
 
-이 설정을 끄면 회원가입 즉시 로그인할 수 있습니다.  
-운영 환경에서는 반드시 켜야 합니다.
+![alt text](./img/image-3.png)
+
+---
+2. **Authentication** → **Sign In / Providers** → **"Confirm email"** 옵션을 **끄기** (OFF)
+
+![alt text](./img/image-4.png)
+
+> 이 설정을 끄면 회원가입 즉시 로그인할 수 있습니다.  
+> 운영 환경에서는 반드시 켜야 합니다.
 
 ---
 ## 4. 회원가입 구현
@@ -168,7 +172,7 @@ def login(data: LoginRequest):
 ```
 
 ---
-## 7. HTTPBearer — Bearer 토큰 받기
+## 6. HTTPBearer — Bearer 토큰 받기
 
 ### 헤더 형식
 
@@ -218,7 +222,7 @@ def get_me(current: CurrentUser = Depends(get_current_user)):
 ```
 
 ---
-## 8. Swagger에서 Bearer 토큰 입력 방법
+## 7. Swagger에서 Bearer 토큰 입력 방법
 
 ```
 1. POST /auth/login 실행 → 응답에서 "access_token" 값 복사
@@ -226,54 +230,266 @@ def get_me(current: CurrentUser = Depends(get_current_user)):
 2. Swagger UI 우측 상단 Authorize 버튼 클릭
 
 3. Value 입력란에 입력:
-   Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   (앞에 "Bearer " 포함해서 입력!)
+   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   (로그인 응답의 access_token 값만 입력)
 
 4. Authorize 버튼 클릭 → Close
 
 5. 이후 모든 보호된 엔드포인트 요청에 자동으로 헤더가 추가됨
 ```
 
-> **주의**: `Bearer ` (공백 포함)을 앞에 붙여야 합니다.  
-> `eyJhbGci...`만 입력하면 401이 발생합니다.
+> Swagger UI가 `Bearer ` 접두사를 자동으로 붙입니다.<br>
+> 입력란에 `Bearer eyJ...`를 넣으면 접두사가 중복되어 인증에 실패합니다.
 
 ---
-## 9. Swagger에서 토큰 없이 요청하면
+## 8. Swagger에서 토큰 없이 요청하면
 
 `HTTPBearer`가 설정된 엔드포인트에 토큰 없이 요청하면:
 
 ```json
-// 401 Unauthorized
+// 403 Forbidden
 {
   "detail": "Not authenticated"
 }
 ```
 
-Swagger에서 자물쇠 아이콘이 닫혀 있으면 토큰이 설정된 상태입니다.
+> FastAPI `HTTPBearer`가 요청을 엔드포인트에 전달하기 전에 인증 정보가 없는 요청을 거부합니다.<br>
+> Swagger에서 자물쇠 아이콘이 닫혀 있으면 토큰이 설정된 상태입니다.
 
 ---
-## 10.  실습 순서
-
-1. Supabase Dashboard → Authentication → Email → "Confirm email" 끄기
-2. `.env`에 `SUPABASE_ANON_KEY` 추가
-3. `POST /auth/signup` → 사용자 A 가입
-4. `POST /auth/login` → A로 로그인 → `access_token` 복사
-5. Swagger → **Authorize** → `Bearer {토큰}` 입력
-6. `GET /me` → 로그인한 사용자 정보 확인
-7. 토큰 없이 `GET /me` → 401 확인
-8. `POST /auth/signup` → 사용자 B 가입
-9. B로 로그인 → 다른 `access_token` 확인
-10. A 토큰으로 `GET /me` → A 정보, B 토큰으로 → B 정보 확인
+## 9. 서버 실행 및 Swagger 실습
 
 ---
-## 핵심 패턴 요약
+### schemam.sql을 이용해서 Supabase에 테이블 생성하기 
 
-| 기능 | 코드 |
-|------|------|
-| 회원가입 | `auth.sign_up({"email": ..., "password": ...})` |
-| 로그인 | `auth.sign_in_with_password({"email": ..., "password": ...})` |
-| 토큰에서 사용자 | `auth.get_user(token)` |
-| Bearer 의존성 | `security = HTTPBearer()` + `Depends(security)` |
-| 현재 사용자 의존성 | `current: CurrentUser = Depends(get_current_user)` |
-| 이메일 검증 | `email: EmailStr` |
-| anon 클라이언트 | `create_client(URL, ANON_KEY)` |
+![alt text](./img/image-5.png)
+
+---
+> 생성된 테이블(profiles) 확인 
+
+![alt text](./img/image-6.png)
+
+---
+### 가상환경 생성
+```bash
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
+uv sync
+```
+
+### 서버 실행
+
+```bash
+# 1. .env 파일에 실제 키 입력
+# 2. 서버 실행
+uvicorn main:app --reload --port 8001
+```
+
+---
+### Swagger UI 실습 (http://localhost:8001/docs)
+
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
+
+이번 실습에서는 같은 계정 정보와 로그인 응답의 토큰을 다음 요청에서 계속 사용합니다.
+
+| 이름 | 저장할 값 |
+|------|-----------|
+| `TEST_EMAIL` | 회원가입에 사용할 이메일 |
+| `PASSWORD` | 회원가입에 사용할 비밀번호 |
+| `ACCESS_TOKEN` | 로그인 응답의 `access_token` |
+
+---
+### 실습 1. 회원가입
+
+`POST /auth/signup` → **Try it out** → Body 입력 → **Execute**
+
+```json
+{
+  "email": "swagger06@example.com",
+  "password": "swagger1234",
+  "display_name": "스웨거 학생"
+}
+```
+→ `200 OK` 확인
+→ 응답의 `user_id`, `email`, `token_type` 확인
+→ `email_confirm_required`가 `false`인지 확인
+
+---
+![alt text](./img/image-7.png)
+
+---
+> `access_token`이 `null`이고 `email_confirm_required`가 `true`라면 이메일 인증이 켜진 상태입니다. 
+> 개발 실습에서는 Supabase의 **Authentication → Sign In / Providers → Email → Confirm email**을 끈 뒤 새 이메일로 다시 가입합니다.
+
+![alt text](./img/image-8.png)
+
+---
+### 실습 2. 잘못된 이메일 형식으로 422 확인
+
+`POST /auth/signup` → Body 입력 → **Execute**
+
+```json
+{
+  "email": "not-an-email",
+  "password": "swagger1234",
+  "display_name": "스웨거 학생"
+}
+```
+
+→ `422 Unprocessable Entity` 확인
+→ 오류의 `loc`에 `"body", "email"`이 표시되는지 확인
+
+> `EmailStr`이 엔드포인트 실행 전에 이메일 형식을 검증합니다.
+
+---
+![alt text](./img/image-9.png)
+
+---
+![alt text](./img/image-10.png)
+
+---
+### 실습 3. 짧은 비밀번호로 422 확인
+
+`POST /auth/signup` → Body 입력 → **Execute**
+
+```json
+{
+  "email": "swagger06-short@example.com",
+  "password": "12345",
+  "display_name": "스웨거 학생"
+}
+```
+
+→ `422 Unprocessable Entity` 확인
+→ 오류의 `loc`에 `"body", "password"`가 표시되는지 확인
+
+> `Field(..., min_length=6, max_length=100)`이므로 비밀번호는 6자 이상이어야 합니다.
+
+---
+![alt text](./img/image-11.png)
+
+---
+![alt text](./img/image-12.png)
+
+---
+### 실습 4. 잘못된 비밀번호로 로그인 실패
+
+`POST /auth/login` → Body 입력 → **Execute**
+
+```json
+{
+  "email": "swagger06@example.com",
+  "password": "wrong1234"
+}
+```
+
+→ `401 Unauthorized` 확인
+
+```json
+{
+  "detail": "로그인에 실패했습니다"
+}
+```
+
+---
+![alt text](./img/image-13.png)
+
+---
+![alt text](./img/image-14.png)
+
+---
+### 실습 5. 로그인하고 access_token 저장
+
+`POST /auth/login` → 회원가입 때 사용한 이메일과 비밀번호 입력 → **Execute**
+
+```json
+{
+  "email": "swagger06@example.com",
+  "password": "swagger1234"
+}
+```
+
+→ `200 OK` 확인
+→ 응답의 `access_token` 값을 `ACCESS_TOKEN`으로 복사<br>
+→ 회원가입 응답과 로그인 응답의 `user_id`가 같은지 확인
+
+> 이후 인증 요청에는 `refresh_token`이 아니라 `access_token`을 사용합니다.
+
+---
+![alt text](./img/image-15.png)
+
+---
+![alt text](./img/image-16.png)
+
+---
+### 실습 6. 토큰 없이 보호된 API 요청
+
+아직 **Authorize**를 실행하지 않은 상태에서 `GET /me` → **Try it out** → **Execute**
+
+→ `403 Forbidden` 확인
+
+```json
+{
+  "detail": "Not authenticated"
+}
+```
+![alt text](./img/image-17.png)
+
+---
+> 이미 인증했다면 우측 상단 **Authorize → Logout → Close**로 토큰을 지운 뒤 실행합니다.
+
+![alt text](./img/image-18.png)
+
+---
+### 실습 7. Bearer 토큰으로 현재 사용자 조회
+
+1. Swagger UI 우측 상단 **Authorize** 클릭
+
+![alt text](./img/image-19.png)
+
+---
+2. Value에 `ACCESS_TOKEN` 값만 입력
+
+![alt text](./img/image-20.png)
+
+---
+3. `GET /me` → **Try it out** → **Execute**
+
+→ `200 OK`와 다음 형태의 응답 확인
+
+![alt text](./img/image-21.png)
+
+---
+→ `/me` 응답의 `user_id`와 로그인 응답의 `user_id`가 같은지 확인
+
+> Swagger UI가 요청 헤더에 `Authorization: Bearer {ACCESS_TOKEN}`을 자동으로 추가합니다.
+
+![alt text](./img/image-22.png)
+
+---
+### 실습 8. 유효하지 않은 토큰으로 401 확인
+
+1. 우측 상단 **Authorize → Logout → Close**로 기존 토큰 제거
+
+![alt text](./img/image-23.png)
+
+---
+2. 다시 **Authorize**를 열고 Value에 `invalid-token` 입력
+
+![alt text](./img/image-24.png)
+
+---
+3. **Authorize → Close** 클릭
+
+![alt text](./img/image-25.png)
+
+---
+4. `GET /me` 실행
+
+![alt text](./img/image-26.png)
+
+---
+→ `401 Unauthorized` 확인
+
+> 토큰이 없는 요청은 `HTTPBearer`가 `403`으로 거부하고, 형식은 있지만 검증에 실패한 토큰은 `get_current_user()`가 `401`로 거부합니다.
+
+![alt text](./img/image-27.png)
