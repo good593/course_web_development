@@ -12,14 +12,6 @@ paginate: true
 # CRUD 완성 — PATCH·오류 처리·집계 API
 
 ---
-## 학습 목표
-
-- `PUT`과 `PATCH`의 차이를 설명하고 PATCH를 올바르게 구현한다
-- `model_dump(exclude_unset=True)`로 보내지 않은 필드를 필터링한다
-- 집계 API(`/summary`)에서 대화 수와 메시지 수를 계산한다
-- `Query` 파라미터로 메시지 조회 건수를 제한한다
-
----
 ## 1. PUT vs PATCH
 
 | 메서드 | 의미 | 동작 방식 |
@@ -152,28 +144,235 @@ def summary(self, user_id: str) -> ChatSummary:
 ```
 
 ---
-## 5. 완성된 API 목록
+## 5. 서버 실행 및 Swagger 실습
 
+---
+### 가상환경 생성
+```bash
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
+uv sync
 ```
-POST   /users                              — 사용자 생성 (201)
-GET    /users/{user_id}                    — 특정 사용자 조회
-PATCH  /users/{user_id}                    — 사용자 정보 수정
-GET    /users/{user_id}/summary            — 대화 수·메시지 수 요약
-POST   /users/{user_id}/conversations      — 대화방 생성 (201)
-GET    /users/{user_id}/conversations      — 사용자별 대화 목록
-PATCH  /conversations/{conversation_id}    — 대화 제목 수정
-POST   /conversations/{conversation_id}/messages  — 메시지 저장 (201)
-GET    /conversations/{conversation_id}/messages  — 메시지 목록 (limit 파라미터)
+
+### 서버 실행
+
+```bash
+# 1. .env 파일에 실제 키 입력
+# 2. 서버 실행
+uvicorn main:app --reload --port 8001
 ```
 
 ---
-## 핵심 패턴 요약
+### Swagger UI 실습 (http://localhost:8001/docs)
 
-| 기능 | 코드 |
-|------|------|
-| PATCH 스키마 | `Optional[str] = Field(default=None, ...)` |
-| 보낸 필드만 | `data.model_dump(exclude_unset=True)` |
-| 수정 + 반환 | `.update(payload).eq("id", id).execute()` |
-| Query 파라미터 | `limit: int = Query(default=50, ge=1, le=100)` |
-| 집계 | `len(result.data)` |
-| response_model | `@app.get(..., response_model=ChatSummary)` |
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
+
+이번 실습에서는 앞 요청의 응답으로 받은 ID를 다음 요청에서 계속 사용합니다.
+
+| 이름 | 저장할 값 |
+|------|-----------|
+| `USER_ID` | 사용자 생성 응답의 `id` |
+| `CONVERSATION_ID` | 대화방 생성 응답의 `id` |
+
+---
+### 실습 1. 사용자 생성
+
+`POST /users` → **Try it out** → Body 입력 → **Execute**
+
+```json
+{
+  "username": "swagger05",
+  "display_name": "스웨거 학생"
+}
+```
+
+→ `201 Created` 확인  
+→ 응답의 `id`를 `USER_ID`로 복사  
+→ 같은 username이 이미 있다면 숫자를 바꾸어 다시 실행
+
+---
+![alt text](./img/image.png)
+
+---
+![alt text](./img/image-1.png)
+
+---
+### 실습 2. PATCH로 사용자 일부 수정
+
+`PATCH /users/{user_id}` → `user_id`에 `USER_ID` 입력 → Body 입력 → **Execute**
+
+```json
+{
+  "display_name": "FastAPI 수강생"
+}
+```
+
+→ `200 OK`와 변경된 `display_name` 확인  
+→ 요청에 `username`을 보내지 않았지만 기존 값 `"swagger05"`가 유지되는지 확인
+
+> `app.patch()`가 PATCH 요청을 연결하고, `exclude_unset=True`가 보내지 않은 필드를 UPDATE에서 제외합니다.
+
+---
+![alt text](./img/image-2.png)
+
+---
+![alt text](./img/image-3.png)
+
+---
+### 실습 3. 수정할 값이 없을 때 400 확인
+
+`PATCH /users/{user_id}` → `user_id`에 `USER_ID` 입력 → Body에 `{}` 입력 → **Execute**
+
+→ `400 Bad Request` 확인
+
+```json
+{
+  "detail": "수정할 값이 없습니다"
+}
+```
+
+`{}`는 Pydantic 스키마를 통과하지만 `exclude_unset=True`의 결과가 빈 딕셔너리이므로 Repository가 400을 반환합니다.
+
+---
+![alt text](./img/image-4.png)
+
+---
+![alt text](./img/image-5.png)
+
+---
+### 실습 4. 존재하지 않는 사용자 수정 시 404 확인
+
+`PATCH /users/{user_id}` → 아래 값을 `user_id`에 입력 → Body 입력 → **Execute**
+
+```text
+00000000-0000-0000-0000-000000000000
+```
+
+```json
+{
+  "display_name": "없는 사용자"
+}
+```
+
+→ `404 Not Found`와 `{"detail": "사용자를 찾을 수 없습니다"}` 확인  
+→ UPDATE 결과가 빈 목록이면 `one_or_404()`가 404로 변환
+
+---
+![alt text](./img/image-6.png)
+
+---
+![alt text](./img/image-7.png)
+
+---
+### 실습 5. 대화방 생성
+
+`POST /users/{user_id}/conversations` → `user_id`에 `USER_ID` 입력 → Body 입력 → **Execute**
+
+```json
+{
+  "title": "PATCH와 집계 실습"
+}
+```
+
+→ `201 Created` 확인  
+→ 응답의 `id`를 `CONVERSATION_ID`로 복사
+
+---
+![alt text](./img/image-8.png)
+
+---
+![alt text](./img/image-9.png)
+
+---
+### 실습 6. 대화방 제목 수정
+
+`PATCH /conversations/{conversation_id}` → `conversation_id`에 `CONVERSATION_ID` 입력 → Body 입력 → **Execute**
+
+```json
+{
+  "title": "Swagger 실습 완료하기"
+}
+```
+
+→ `200 OK`와 변경된 `title` 확인
+
+> 현재 `ConversationUpdate`의 수정 가능 필드는 `title` 하나이며 필수이므로 `exclude_unset=True`를 사용하지 않습니다.
+
+---
+![alt text](./img/image-10.png)
+
+---
+![alt text](./img/image-11.png)
+
+---
+### 실습 7. 메시지 3개 생성
+
+`POST /conversations/{conversation_id}/messages`에서 `conversation_id`에 `CONVERSATION_ID`를 입력하고, Body만 바꾸어 세 번 실행합니다.
+
+---
+```json
+{"role": "user", "content": "첫 번째 메시지"}
+```
+![w:1000](./img/image-12.png)
+
+---
+```json
+{"role": "assistant", "content": "두 번째 메시지"}
+```
+![w:1000](./img/image-13.png)
+
+---
+```json
+{"role": "user", "content": "세 번째 메시지"}
+```
+![w:1000](./img/image-14.png)
+
+---
+### 실습 8. Query 파라미터로 2개만 조회
+
+`GET /conversations/{conversation_id}/messages`
+
+- `conversation_id`: `CONVERSATION_ID`
+- `limit`: `2`
+
+→ **Execute** → `200 OK` 확인  
+→ 메시지가 오래된 순서로 정확히 2개만 반환되는지 확인
+
+---
+```text
+GET /conversations/{CONVERSATION_ID}/messages?limit=2
+```
+![alt text](./img/image-15.png)
+
+---
+![alt text](./img/image-16.png)
+
+---
+### 실습 9. limit 범위 검증 실패
+
+`GET /conversations/{conversation_id}/messages`
+
+- `conversation_id`: `CONVERSATION_ID`
+- `limit`: `0`
+
+→ **Execute** → `422 Unprocessable Entity` 확인  
+→ 오류의 `loc`에 `"query", "limit"`가 표시되는지 확인
+
+---
+> `Query(50, ge=1, le=100)`이므로 1보다 작거나 100보다 큰 값은 엔드포인트 실행 전에 거부됩니다.
+
+![alt text](./img/image-17.png)
+
+---
+### 실습 10. 사용자별 대화·메시지 집계
+
+`GET /users/{user_id}/summary` → `user_id`에 `USER_ID` 입력 → **Execute**
+→ `200 OK`와 다음 형태의 응답 확인
+
+![alt text](./img/image-18.png)
+
+---
+> 이 실습에서 만든 데이터만 있다면 대화방은 1개, 메시지는 3개입니다. 같은 사용자로 추가 데이터를 만들었다면 집계 값은 그만큼 증가합니다.
+
+![alt text](./img/image-19.png)
+
+
