@@ -2,7 +2,8 @@
 5교시 실습: Supabase Auth + Redis 세션 + Supabase 대화 이력 통합
 
 실행:
-  docker run --name redis-fastapi -p 6379:6379 -d redis:7
+  docker compose up -d
+  docker compose exec redis redis-cli ping
   pip install -r requirements.txt
   copy .env.example .env
   uvicorn main:app --reload
@@ -22,6 +23,7 @@ from supabase import Client, create_client
 
 load_dotenv()
 
+# 필수 Supabase 값은 누락 시 즉시 실패시키고, 실습용 TTL 값에는 기본값을 둡니다.
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
 SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
@@ -30,6 +32,7 @@ SESSION_TTL_SECONDS = int(os.getenv("SESSION_TTL_SECONDS", "3600"))
 RECENT_HISTORY_LIMIT = int(os.getenv("RECENT_HISTORY_LIMIT", "20"))
 RECENT_HISTORY_TTL_SECONDS = int(os.getenv("RECENT_HISTORY_TTL_SECONDS", "86400"))
 
+# 문자열 기반 JSON 처리와 비교를 위해 Redis 응답을 bytes가 아닌 str로 받습니다.
 r = redis.from_url(REDIS_URL, decode_responses=True)
 
 app = FastAPI(
@@ -40,13 +43,16 @@ app = FastAPI(
 
 
 def public_client() -> Client:
+    # 회원가입, 로그인, 토큰 검증은 공개용 anon 키로 Supabase Auth를 호출합니다.
     return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 
 def admin_client() -> Client:
+    # service_role은 RLS를 우회하므로 서버 내부에서만 사용해야 합니다.
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
+# 요청 및 응답 데이터 모델
 class SignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6, max_length=100)
@@ -87,6 +93,7 @@ class MessageCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=2000)
 
 
+# Redis 키 형식을 한곳에서 관리해 도메인별 키가 섞이지 않게 합니다.
 def now_ts() -> int:
     return int(time.time())
 
@@ -106,6 +113,7 @@ def one_or_404(rows: list[dict], detail: str) -> dict:
 
 
 def upsert_profile(user_id: str, email: str, display_name: str) -> dict:
+    # Auth의 user_id를 profiles의 PK로 사용해 인증 사용자와 프로필을 1:1로 연결합니다.
     result = (
         admin_client()
         .table("profiles")
@@ -120,8 +128,10 @@ def upsert_profile(user_id: str, email: str, display_name: str) -> dict:
 
 
 def create_app_session(user_id: str, email: str, access_token: str, refresh_token: str) -> LoginResponse:
+    # 클라이언트에는 Supabase 토큰 대신 임의의 앱 session_id만 전달합니다.
     session_id = str(uuid4())
     key = app_session_key(session_id)
+    # 토큰과 사용자 정보는 서버 측 Redis Hash에만 보관합니다.
     r.hset(
         key,
         mapping={
@@ -133,6 +143,7 @@ def create_app_session(user_id: str, email: str, access_token: str, refresh_toke
             "last_seen_at": now_ts(),
         },
     )
+    # 세션 키 전체에 TTL을 설정해 오래된 세션을 Redis가 자동 정리하게 합니다.
     r.expire(key, SESSION_TTL_SECONDS)
     return LoginResponse(
         session_id=session_id,
@@ -148,21 +159,25 @@ def get_current_session(
     if not x_session_id:
         raise HTTPException(status_code=401, detail="X-Session-Id 헤더가 필요합니다")
 
+    # 1단계: Redis에 앱 세션이 존재하는지 확인합니다.
     key = app_session_key(x_session_id)
     data = r.hgetall(key)
     if not data:
         raise HTTPException(status_code=401, detail="앱 세션이 없거나 만료되었습니다")
 
+    # 2단계: Redis에 저장된 access_token도 Supabase Auth에서 다시 검증합니다.
     try:
         auth_result = public_client().auth.get_user(data["access_token"])
     except Exception as exc:
         r.delete(key)
         raise HTTPException(status_code=401, detail="Supabase 토큰이 만료되었거나 유효하지 않습니다") from exc
 
+    # 3단계: 토큰 사용자와 Redis 사용자 정보가 같은지 확인합니다.
     if not auth_result.user or str(auth_result.user.id) != data["user_id"]:
         r.delete(key)
         raise HTTPException(status_code=401, detail="세션 사용자 정보가 일치하지 않습니다")
 
+    # 4단계: 정상 요청이 들어오면 마지막 접근 시각과 TTL을 갱신합니다.
     r.hset(key, "last_seen_at", now_ts())
     r.expire(key, SESSION_TTL_SECONDS)
 
@@ -175,6 +190,7 @@ def get_current_session(
 
 
 def get_owned_conversation(conversation_id: str, user_id: str) -> dict:
+    # admin_client는 RLS를 우회하므로 모든 조회에 owner_id 조건을 직접 적용합니다.
     result = (
         admin_client()
         .table("chat_conversations")
@@ -189,11 +205,14 @@ def get_owned_conversation(conversation_id: str, user_id: str) -> dict:
 
 def append_recent_message(user_id: str, conversation_id: str, message: dict) -> None:
     key = recent_history_key(user_id, conversation_id)
+    # 오래된 메시지부터 읽을 수 있도록 List 오른쪽에 JSON 문자열을 추가합니다.
     r.rpush(key, json.dumps(message, ensure_ascii=False))
+    # LTRIM으로 최근 N개만 남기고, 캐시 자체에도 별도 TTL을 적용합니다.
     r.ltrim(key, -RECENT_HISTORY_LIMIT, -1)
     r.expire(key, RECENT_HISTORY_TTL_SECONDS)
 
 
+# 상태 확인 API
 @app.get("/")
 def root():
     return {"message": "Supabase + Redis 통합 대화 API", "docs": "/docs"}
@@ -204,8 +223,10 @@ def health():
     return {"redis": r.ping(), "supabase_url": SUPABASE_URL}
 
 
+# 인증 API: Supabase Auth로 신원을 확인하고 Redis로 앱 세션을 관리합니다.
 @app.post("/auth/signup", response_model=SignupResponse, tags=["Auth"])
 def signup(data: SignupRequest):
+    # 1. Supabase Auth에 계정을 생성합니다.
     try:
         result = public_client().auth.sign_up({
             "email": data.email,
@@ -219,6 +240,7 @@ def signup(data: SignupRequest):
         raise HTTPException(status_code=400, detail="회원가입에 실패했습니다")
 
     user_id = str(result.user.id)
+    # 2. Auth 사용자 ID와 같은 ID로 영구 프로필을 저장합니다.
     upsert_profile(user_id, data.email, data.display_name)
 
     return SignupResponse(
@@ -230,6 +252,7 @@ def signup(data: SignupRequest):
 
 @app.post("/auth/login", response_model=LoginResponse, tags=["Auth"])
 def login(data: LoginRequest):
+    # Supabase가 이메일과 비밀번호를 검증하면 access/refresh token을 발급합니다.
     try:
         result = public_client().auth.sign_in_with_password({
             "email": data.email,
@@ -241,6 +264,7 @@ def login(data: LoginRequest):
     if not result.user or not result.session:
         raise HTTPException(status_code=401, detail="로그인에 실패했습니다")
 
+    # 발급된 토큰은 Redis 앱 세션에 저장하고 session_id만 응답합니다.
     return create_app_session(
         user_id=str(result.user.id),
         email=result.user.email or data.email,
@@ -251,10 +275,12 @@ def login(data: LoginRequest):
 
 @app.post("/auth/logout", tags=["Auth"])
 def logout(session: AppSession = Depends(get_current_session)):
+    # 앱 세션 키를 삭제하면 이후 같은 session_id 요청은 401이 됩니다.
     deleted = r.delete(app_session_key(session.session_id))
     return {"session_id": session.session_id, "deleted": bool(deleted)}
 
 
+# 영구 데이터 API: 원본 데이터는 Supabase PostgreSQL에 저장합니다.
 @app.get("/me", tags=["Profiles"])
 def me(session: AppSession = Depends(get_current_session)):
     result = (
@@ -305,7 +331,9 @@ def create_message(
     data: MessageCreate,
     session: AppSession = Depends(get_current_session),
 ):
+    # service_role 조회 전에 대화방 소유권을 애플리케이션에서 확인합니다.
     get_owned_conversation(conversation_id, session.user_id)
+    # 1. 원본 메시지를 Supabase에 먼저 저장해 캐시 장애 시에도 복구 가능하게 합니다.
     result = (
         admin_client()
         .table("chat_messages")
@@ -318,6 +346,7 @@ def create_message(
         .execute()
     )
     message = one_or_404(result.data, "메시지를 저장하지 못했습니다")
+    # 2. 영구 저장 성공 후 Redis의 최근 대화 캐시를 갱신합니다.
     append_recent_message(session.user_id, conversation_id, message)
     return message
 
@@ -327,6 +356,7 @@ def list_messages(
     conversation_id: str,
     session: AppSession = Depends(get_current_session),
 ):
+    # 전체 대화 이력은 캐시가 아닌 Supabase에서 시간순으로 조회합니다.
     get_owned_conversation(conversation_id, session.user_id)
     result = (
         admin_client()
@@ -345,6 +375,7 @@ def recent_messages(
     conversation_id: str,
     session: AppSession = Depends(get_current_session),
 ):
+    # LLM 컨텍스트 등에 사용할 최근 N개는 Redis에서 빠르게 조회합니다.
     get_owned_conversation(conversation_id, session.user_id)
     key = recent_history_key(session.user_id, conversation_id)
     return [json.loads(item) for item in r.lrange(key, 0, -1)]
@@ -356,6 +387,7 @@ def rebuild_recent_messages(
     session: AppSession = Depends(get_current_session),
 ):
     get_owned_conversation(conversation_id, session.user_id)
+    # Supabase에서 최신 N개를 내림차순으로 조회합니다.
     result = (
         admin_client()
         .table("chat_messages")
@@ -366,8 +398,10 @@ def rebuild_recent_messages(
         .limit(RECENT_HISTORY_LIMIT)
         .execute()
     )
+    # Redis List에는 오래된 메시지부터 넣기 위해 조회 결과를 뒤집습니다.
     messages = list(reversed(result.data))
     key = recent_history_key(session.user_id, conversation_id)
+    # 기존 캐시를 지운 뒤 Supabase 원본으로 완전히 재생성합니다.
     r.delete(key)
     for message in messages:
         append_recent_message(session.user_id, conversation_id, message)

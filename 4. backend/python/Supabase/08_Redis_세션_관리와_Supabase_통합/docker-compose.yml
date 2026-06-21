@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  redis:
+    container_name: redis-stack
+    # 'server'가 붙지 않은 통합 이미지를 사용해 봅니다.
+    image: redis/redis-stack:7.2.0-v10
+    environment:
+      - REDIS_ARGS=--appendonly yes --protected-mode no
+    ports:
+      - "6379:6379"   # Redis 데이터
+      - "8001:8001"   # 이 이미지에 내장된 RedisInsight (선택 사항)
+    volumes:
+      - ./database:/data
+    restart: unless-stopped
+
+  # 기존 redis-ui 서비스는 유지해도 되고, 위 8001 포트를 써도 됩니다.
+  redis-ui:
+    container_name: redis-insight
+    image: redis/redisinsight:2.54
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    
