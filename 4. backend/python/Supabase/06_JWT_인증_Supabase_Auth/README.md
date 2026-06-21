@@ -270,6 +270,16 @@ def get_me(current: CurrentUser = Depends(get_current_user)):
 ![alt text](./img/image-6.png)
 
 ---
+### Secret keys 추가 
+
+![alt text](./img/image-28.png)
+
+---
+> 복사한  Secret keys를 `SUPABASE_ANON_KEY`에 추가 
+
+![alt text](./img/image-29.png)
+
+---
 ### 가상환경 생성
 ```bash
 # pyproject.toml과 uv.lock 기준으로 의존성 설치
