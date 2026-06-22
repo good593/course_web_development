@@ -13,14 +13,3 @@ services:
     volumes:
       - ./database:/data
     restart: unless-stopped
-
-  # 기존 redis-ui 서비스는 유지해도 되고, 위 8001 포트를 써도 됩니다.
-  redis-ui:
-    container_name: redis-insight
-    image: redis/redisinsight:2.54
-    ports:
-      - "5540:5540"
-    depends_on:
-      - redis
-    restart: unless-stopped
-    

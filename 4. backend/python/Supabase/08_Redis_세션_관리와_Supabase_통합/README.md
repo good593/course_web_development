@@ -23,9 +23,8 @@ paginate: true
 |--------|----------|------|------|
 | `redis` | `redis-stack` | `6379` | Redis 데이터 저장 및 조회 |
 | `redis` 내장 UI | `redis-stack` | `8001` | Redis Stack에 포함된 RedisInsight |
-| `redis-ui` | `redis-insight` | `5540` | 별도 RedisInsight 컨테이너 |
 
-> RedisInsight는 `http://localhost:8001` 또는 `http://localhost:5540` 중 하나를 사용하면 됩니다.
+> RedisInsight는 `http://localhost:8001` 사용하면 됩니다.
 
 ---
 ### 실행 및 상태 확인
@@ -37,19 +36,14 @@ docker compose up -d
 ![alt text](./img/image.png)
 
 ---
-### [Redis UI 접속 주소](http://localhost:5540)
+### [Redis UI 접속 주소](http://localhost:8001)
 
-| 접속 위치 | 호스트 | 포트 |
-|----------|--------|------|
-| 로컬에서 실행하는 FastAPI | `localhost` | `6379` |
-| `redis-ui` 컨테이너 | `redis` | `6379` |
-
-![bg right w:450](./img/image-2.png)
+![bg right w:450](./img/image-1.png)
 
 ---
 > Redis UI 접속 성공 
 
-![alt text](./img/image-3.png)
+![alt text](./img/image-2.png)
 
 ---
 따라서 `.env`의 설정은 다음과 같습니다.
@@ -58,11 +52,9 @@ docker compose up -d
 REDIS_URL=redis://localhost:6379/0
 ```
 
-![alt text](./img/image-1.png)
+![alt text](./img/image-3.png)
 
 ---
-`http://localhost:5540`의 별도 RedisInsight에서 데이터베이스를 직접 등록할 때는 Host에 `redis`, Port에 `6379`를 입력합니다. Compose 서비스들은 같은 네트워크에서 서비스 이름으로 서로를 찾습니다.
-
 > `--protected-mode no` 설정은 로컬 실습용입니다. `6379` 포트를 외부 인터넷에 공개하는 운영 환경에서는 인증과 네트워크 접근 제어를 반드시 설정해야 합니다.
 
 ![w:900](./img/image-4.png)
