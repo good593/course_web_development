@@ -24,6 +24,37 @@ paginate: true
 - 의존성 주입(Depends)으로 테스트 가능한 코드 구조 설계
 
 ---
+## 프로젝트 구조
+
+```
+12_CRUD_서비스설계/
+├── main.py                  ← FastAPI 앱 생성 + 라우터 등록
+├── core/
+│   ├── database.py          ← SQLite 연결, 테이블 생성, 공통 변환 함수
+│   ├── dependencies.py      ← Service 의존성 주입 함수
+│   └── seed.py              ← 수업용 초기 데이터 생성
+├── schemas/
+│   └── blog.py              ← Pydantic 요청/응답 스키마
+├── repositories/
+│   └── blog.py              ← SQL 쿼리와 DB CRUD
+├── services/
+│   └── blog.py              ← 비즈니스 규칙과 검증
+└── routers/
+    ├── categories.py        ← 카테고리 엔드포인트
+    ├── posts.py             ← 게시글 엔드포인트
+    └── comments.py          ← 댓글 엔드포인트
+```
+
+| 계층 | 파일 | 담당 |
+|------|------|------|
+| Router | `routers/*.py` | HTTP 요청/응답, 상태코드, 응답 모델 |
+| Service | `services/blog.py` | 존재 여부 확인, 비즈니스 규칙 |
+| Repository | `repositories/blog.py` | SQL 실행, DB commit |
+| Schema | `schemas/blog.py` | 요청/응답 데이터 모양 |
+| Core | `core/*.py` | DB 연결, 의존성 주입, 초기 데이터 |
+| App | `main.py` | 앱 생성, 라우터 등록, 시작 시 DB 준비 |
+
+---
 ## 왜 SQLite를 쓰는가?
 
 | 선택지 | 특징 |
@@ -74,7 +105,7 @@ paginate: true
 
 ```python
 # Router - HTTP 요청/응답만 담당
-@app.get("/posts/{post_id}", response_model=PostResponse)
+@router.get("/{post_id}", response_model=PostResponse)
 def get_post(post_id: int, service: PostService = Depends(get_post_service)):
     return service.get_post(post_id)
 
@@ -147,7 +178,7 @@ Category (1) ────< Post (1) ────< Comment
 ![alt text](./img/image.png)
 
 ---
-### DB 연결 설정
+### DB 연결 설정 (`core/database.py`)
 
 ```python
 from pathlib import Path
@@ -323,15 +354,19 @@ class PostService:
 | Repository 조합 | 게시글 상세 + 카테고리 + 댓글 수 |
 
 ---
-## 7. 의존성 주입
+## 7. 의존성 주입 (`core/dependencies.py` + `routers/*.py`)
 
 ```python
 def get_post_service(
     db: sqlite3.Connection = Depends(get_db),
 ) -> PostService:
     return PostService(db)
+```
 
-@app.post("/posts", response_model=PostResponse, status_code=201)
+라우터는 DB 세션을 직접 만들지 않고, 의존성 주입 함수를 통해 Service만 받습니다.
+
+```python
+@router.post("", response_model=PostResponse, status_code=201)
 def create_post(
     data: PostCreate,
     service: PostService = Depends(get_post_service),

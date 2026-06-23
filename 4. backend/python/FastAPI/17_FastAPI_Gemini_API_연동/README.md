@@ -20,6 +20,32 @@ paginate: true
 - 토큰 사용량 모니터링 엔드포인트를 추가한다
 
 ---
+## 프로젝트 구조
+
+```
+17_FastAPI_Gemini_API_연동/
+├── main.py                  ← FastAPI 앱 생성 + 라우터 등록
+├── core/
+│   ├── config.py            ← 환경변수, 모델명, 세션 만료 시간
+│   ├── gemini.py            ← Gemini 클라이언트 생성
+│   └── error_handlers.py    ← Gemini API 오류 응답 변환
+├── schemas/
+│   └── chat.py              ← 요청/응답 Pydantic 모델
+├── models/
+│   └── session.py           ← 메모리 세션 데이터 구조
+├── services/
+│   ├── gemini_service.py    ← Gemini 호출, 스트리밍, 통계 기록
+│   ├── session_store.py     ← 세션 생성/조회/삭제/만료 처리
+│   └── stats.py             ← 토큰 사용량 누적
+└── routers/
+    ├── ask.py               ← /ask, /ask/stream
+    ├── chat.py              ← /chat, /sessions
+    └── stats.py             ← /stats
+```
+
+`main.py`는 엔드포인트 로직을 직접 들고 있지 않고, 앱을 만들고 라우터를 연결하는 역할만 담당합니다.
+
+---
 ## 1. Gemini SDK 비동기 호출
 
 ---
@@ -45,20 +71,19 @@ client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 # client.aio 는 비동기 인터페이스
 # - client.aio.models.generate_content()
 # - client.aio.models.generate_content_stream()
-# - client.aio.chats.create()
 ```
 
 ---
 ## 2. 단순 Q&A 엔드포인트
 
 ```python
-app = FastAPI()
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+from core.gemini import client
+from core.config import GEMINI_MODEL
 
 @app.post("/ask", response_model=AskResponse)
 async def ask(req: AskRequest):
     response = await client.aio.models.generate_content(
-        model="gemini-3.5-flash",
+        model=GEMINI_MODEL,
         contents=req.question,
         config=types.GenerateContentConfig(
             temperature=req.temperature,
@@ -95,22 +120,18 @@ async def ask(req: AskRequest):
 
 ---
 ## 3. 대화 세션 관리
-> Chat 세션(`client.chats`)은 비동기 버전(`client.aio.chats`)도 있습니다.
+> Chat 세션은 대화 기록을 객체 안에 보관합니다. 현재 예제는 동기 Chat API를 `asyncio.to_thread()`로 감싸 FastAPI의 이벤트 루프가 막히지 않게 처리합니다.
 
 ```python
-from uuid import uuid4
+from services.session_store import get_session
 
-# 메모리 내 세션 저장소
-sessions: dict[str, object] = {}
-
-def get_or_create_session(session_id: str) -> object:
-    ...
-
-@app.post("/chat/{session_id}")
-async def chat(session_id: str, req: ChatRequest):
-    chat_session = get_or_create_session(session_id)
-    # 동기 Chat API를 asyncio.to_thread로 비동기화
-    ...
+async def send_chat_message(session_id: str, req: ChatRequest):
+    session = get_session(session_id)
+    response = await asyncio.to_thread(
+        session.chat.send_message,
+        req.message,
+        config=config,
+    )
 ```
 
 ---
@@ -168,6 +189,7 @@ POST /chat/sessions        — 새 대화 세션 생성
 POST /chat/{session_id}    — 세션 내 대화 전송
 GET  /chat/{session_id}/history  — 대화 기록 조회
 DELETE /chat/{session_id}  — 세션 삭제
+GET  /sessions             — 활성 세션 목록
 POST /ask/stream           — 스트리밍 단순 질문
 POST /chat/{session_id}/stream   — 스트리밍 세션 대화
 GET  /stats                — 토큰 사용량 통계
@@ -193,7 +215,7 @@ stats = UsageStats()
 async def ask(req: AskRequest):
     response = await client.aio.models.generate_content(...)
     usage = response.usage_metadata
-    stats.add(usage.prompt_token_count, usage.candidates_token_count)
+    stats.record(usage.prompt_token_count, usage.candidates_token_count)
     ...
 ```
 
@@ -208,10 +230,14 @@ from google.genai import errors
 @app.exception_handler(errors.APIError)
 async def gemini_error_handler(request: Request, exc: errors.APIError):
     status_map = {429: 429, 403: 401, 400: 400}
-    status_code = status_map.get(exc.status_code, 502)
+    status_code = status_map.get(exc.code, 502)
     return JSONResponse(
         status_code=status_code,
-        content={"detail": f"Gemini API 에러: {exc.message}"},
+        content={
+            "detail": f"Gemini API 에러: {exc.message}",
+            "code": exc.code,
+            "status": exc.status,
+        },
     )
 ```
 
@@ -221,20 +247,16 @@ async def gemini_error_handler(request: Request, exc: errors.APIError):
 > 메모리 무한 증가를 막기 위해 오래된 세션을 정리합니다.
 
 ```python
-import time
-
-session_timestamps: dict[str, float] = {}
-SESSION_TTL = 3600  # 1시간
+from core.config import SESSION_TTL_SECONDS
 
 def cleanup_old_sessions():
     now = time.time()
     expired = [
-        sid for sid, ts in session_timestamps.items()
-        if now - ts > SESSION_TTL
+        sid for sid, session in sessions.items()
+        if now - session.last_used > SESSION_TTL_SECONDS
     ]
     for sid in expired:
-        sessions.pop(sid, None)
-        session_timestamps.pop(sid, None)
+        del sessions[sid]
 ```
 
 ---

@@ -24,13 +24,22 @@ paginate: true
 
 ```
 13_CRUD_서비스구현/
-├── main.py          ← FastAPI 앱 + 엔드포인트
-├── dependencies.py  ← Service 의존성 주입 함수
-├── services.py      ← 비즈니스 로직
-├── repositories.py  ← DB 쿼리
-├── database.py      ← DB 연결, 세션, Base
-├── models.py        ← SQLAlchemy ORM 모델
-└── schemas.py       ← Pydantic 입출력 스키마
+├── main.py                  ← FastAPI 앱 생성 + 라우터 등록
+├── core/
+│   ├── database.py          ← DB 연결, 세션, Base
+│   └── dependencies.py      ← Service 의존성 주입 함수
+├── models/
+│   └── blog.py              ← SQLAlchemy ORM 모델
+├── schemas/
+│   └── blog.py              ← Pydantic 입출력 스키마
+├── repositories/
+│   └── blog.py              ← DB 쿼리
+├── services/
+│   └── blog.py              ← 비즈니스 로직
+└── routers/
+    ├── categories.py        ← 카테고리 엔드포인트
+    ├── posts.py             ← 게시글 엔드포인트
+    └── comments.py          ← 댓글 엔드포인트
 ```
 
 ---
@@ -38,16 +47,17 @@ paginate: true
 
 | 파일 | 담당 |
 |------|------|
-| `database.py` | DB URL, engine, SessionLocal, `get_db()` |
-| `models.py` | 테이블 정의 (Column, ForeignKey, relationship) |
-| `schemas.py` | 입력/출력 형식 (Pydantic BaseModel) |
-| `repositories.py` | SQLAlchemy 쿼리와 DB commit/refresh |
-| `services.py` | 비즈니스 규칙 검증과 Repository 조합 |
-| `dependencies.py` | 요청마다 DB 세션을 주입받아 Service 생성 |
-| `main.py` | FastAPI 앱 생성, 테이블 생성, 엔드포인트 |
+| `core/database.py` | DB URL, engine, SessionLocal, `get_db()` |
+| `models/blog.py` | 테이블 정의 (Column, ForeignKey, relationship) |
+| `schemas/blog.py` | 입력/출력 형식 (Pydantic BaseModel) |
+| `repositories/blog.py` | SQLAlchemy 쿼리와 DB commit/refresh |
+| `services/blog.py` | 비즈니스 규칙 검증과 Repository 조합 |
+| `core/dependencies.py` | 요청마다 DB 세션을 주입받아 Service 생성 |
+| `routers/*.py` | URL별 엔드포인트 함수 |
+| `main.py` | FastAPI 앱 생성, 테이블 생성, 라우터 등록 |
 
 ---
-## 2. database.py — DB 연결
+## 2. core/database.py — DB 연결
 
 ```python
 DATABASE_URL = "sqlite:///./blog.db"
@@ -67,7 +77,7 @@ def get_db():
 **실습 포인트**: `main.py` 상단에서 앱 시작 전에 `Base.metadata.create_all(bind=engine)`를 호출해야 테이블이 자동 생성됩니다.
 
 ---
-## 3. models.py — SQLAlchemy 모델
+## 3. models/blog.py — SQLAlchemy 모델
 
 ---
 ### Category → Post → Comment 관계
@@ -108,7 +118,7 @@ db.commit()
 ```
 
 ---
-## 4. schemas.py — Pydantic 스키마
+## 4. schemas/blog.py — Pydantic 스키마
 
 ---
 ### 중첩 응답 — PostDetailResponse
@@ -146,7 +156,7 @@ class PaginatedPosts(BaseModel):
 | `Paginated...` | `total`, `skip`, `limit` + `items` 배열 |
 
 ---
-## 5. repositories.py — DB 쿼리
+## 5. repositories/blog.py — DB 쿼리
 
 ---
 ### 기본 CRUD 패턴
@@ -230,7 +240,7 @@ def count(self, category_id=None, published_only=False, search=None) -> int:
 ```
 
 ---
-## 6. services.py — 비즈니스 로직
+## 6. services/blog.py — 비즈니스 로직
 
 ---
 ### 검증 패턴
@@ -287,7 +297,7 @@ def delete_category(self, cat_id: int) -> None:
 ```
 
 ---
-## 7. dependencies.py — 의존성 주입
+## 7. core/dependencies.py — 의존성 주입
 
 라우터 함수가 DB 세션을 직접 만들지 않도록, Service 생성 로직을 별도 파일로 분리합니다.
 
@@ -295,7 +305,7 @@ def delete_category(self, cat_id: int) -> None:
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from database import get_db
+from core.database import get_db
 from services import CategoryService, PostService
 
 
@@ -308,10 +318,10 @@ def get_post_service(db: Session = Depends(get_db)) -> PostService:
 ```
 
 ---
-## 8. main.py — 엔드포인트와 Query 파라미터
+## 8. routers/posts.py — 엔드포인트와 Query 파라미터
 
 ```python
-from dependencies import get_post_service
+from core.dependencies import get_post_service
 from services import PostService
 
 
@@ -325,6 +335,14 @@ def list_posts(
     service: PostService = Depends(get_post_service),
 ):
     return service.list_posts(...)
+```
+
+`main.py`는 엔드포인트를 직접 들고 있지 않고, 각 라우터를 앱에 연결하는 역할만 담당합니다.
+
+```python
+app.include_router(category_router)
+app.include_router(post_router)
+app.include_router(comment_router)
 ```
 
 ---
@@ -390,4 +408,4 @@ uvicorn main:app --reload --port 8001
 | cascade 삭제 | `cascade="all, delete-orphan"` on relationship |
 | 전체 수 + 목록 | `count()` + `offset().limit().all()` |
 | 비즈니스 검증 | Service 계층에서 HTTPException 발생 |
-| 계층 분리 | Repository는 DB 쿼리, Service는 규칙 검증, main은 라우팅 |
+| 계층 분리 | Repository는 DB 쿼리, Service는 규칙 검증, Router는 HTTP 엔드포인트, main은 앱 조립 |
