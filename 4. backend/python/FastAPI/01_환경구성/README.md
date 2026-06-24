@@ -32,25 +32,11 @@ paginate: true
 - **API (Application Programming Interface)** : 클라이언트와 서버가 대화하는 약속된 방식
 
 ---
-### REST란?
-> **RE**presentational **S**tate **T**ransfer — 리소스를 URI로 표현하고 HTTP 메서드로 행위를 나타내는 설계 원칙
-
-```
-# 좋은 REST URI 예시
-GET  /users          → 유저 목록 조회
-GET  /users/42       → ID 42번 유저 조회
-POST /users          → 유저 생성
-PUT  /users/42       → ID 42번 유저 수정
-DELETE /users/42     → ID 42번 유저 삭제
-
-# 나쁜 예시 (동사를 URI에 넣지 않는다)
-GET  /getUsers       
-POST /createUser     
-GET  /deleteUser/42  
-```
+![alt text](./img/image-6.png)
 
 ---
-## [2. 왜 FastAPI인가?](https://fastapi.tiangolo.com/ko/)
+## [2. FastAPI란?](https://fastapi.tiangolo.com/ko/)
+> FastAPI는 Python 기반으로 빠르고 쉽게 REST API를 개발할 수 있는 고성능 웹 프레임워크
 
 ---
 ### 프레임워크 비교
@@ -89,8 +75,11 @@ def create_item(item: Item):   # ← 이것만으로 검증 + 문서화 완료
 ```
 
 ---
-### ASGI / Uvicorn이란?
+## 3. ASGI / Uvicorn이란?
 
+---
+- `ASGI`: FastAPI가 `비동기 요청`을 처리할 수 있도록 정의된 웹 서버 표준 인터페이스
+- `Uvicorn`: FastAPI 애플리케이션을 실제로 실행하고 `HTTP 요청`을 처리하는 ASGI 서버
 ```
 [HTTP 요청]
     ↓
@@ -102,93 +91,127 @@ def create_item(item: Item):   # ← 이것만으로 검증 + 문서화 완료
 ```
 
 ---
-- **WSGI** (Flask, Django) : 동기, 요청 하나씩 처리
-    - 웹 서버(Nginx, Apache 등)와 파이썬 웹 애플리케이션(Django, Flask 등)이 통신하기 위한 표준 인터페이스(규약)
-    - . 이를 통해 개발자는 특정 서버에 종속되지 않고 자유롭게 프레임워크를 선택하고 배포할 수 있습니다.
-- **ASGI** (FastAPI) : 비동기, 동시에 여러 요청 처리 가능
-    - 파이썬 웹 서버와 애플리케이션 간의 비동기 통신 표준입니다. 
-    - 동기식(Sync) 요청만 처리하던 기존의 WSGI 한계를 극복하여 WebSocket과 같은 비동기 이벤트와 동기·비동기 애플리케이션을 모두 지원합니다.
-- **Uvicorn** : Python용 초고속 ASGI 서버
+### 동기 vs 비동기 
+| 구분 | 동기 (Synchronous) | 비동기 (Asynchronous) |
+|------|-------------------|----------------------|
+| 개념 | 작업이 끝날 때까지 다음 작업이 기다림 | 작업을 요청한 후 결과를 기다리지 않고 다른 작업 수행 |
+| 처리 방식 | 순차 처리 | 병렬적으로 처리 가능 |
+| 대기 시간 | 대기하는 동안 아무것도 못 함 | 대기하는 동안 다른 작업 가능 |
+| FastAPI 코드 | `def` 사용 | `async def` 사용 |
+| 장점 | 구현이 단순함 | 높은 처리량과 성능 |
+| 단점 | 대기 시간이 길어질 수 있음 | 구현이 다소 복잡함 |
 
 ---
-## 3. 실습 — 환경 구성
+![alt text](./img/image-5.png)
 
 ---
-### 3-1. 프로젝트 준비
-> 이 예제는 `uv` 기반 프로젝트로 구성되어 있다.
+## [4. Swagger란?](https://swagger.io/)
+> Swagger는 REST API를 설계하고, 문서화하고, 테스트할 수 있도록 도와주는 도구 및 명세(OpenAPI Specification 기반)입니다.
+
+---
+| 항목 | 설명 |
+|---|---|
+| Swagger | REST API를 문서화하고 테스트할 수 있는 도구 모음 |
+| OpenAPI | API를 기술하는 표준 명세(Specification) |
+| 주요 기능 | API 문서 자동 생성, 요청/응답 명세 제공, 브라우저 기반 테스트 |
+| 장점 | 협업 효율 향상, 문서 최신화 자동화, 개발 및 테스트 편의성 증가 |
+| 단점 | 운영 환경 노출 주의 필요, 문서 품질은 개발자의 작성 수준에 의존 |
+| FastAPI | `/docs`(Swagger UI), `/redoc` 문서를 자동 제공 |
+
+---
+### FastAPI의 자동 문서화 원리
+
+FastAPI는 코드를 분석해 **OpenAPI 3.x 스펙(JSON)**을 자동으로 생성합니다.  
+이 JSON을 두 가지 UI로 렌더링합니다.
+
+| URL | UI | 특징 |
+|-----|-----|------|
+| `/docs` | Swagger UI | 브라우저에서 직접 API 호출 가능 |
+| `/redoc` | ReDoc | 가독성 높은 읽기 전용 문서 |
+| `/openapi.json` | 원본 스펙 | Postman 등 외부 도구에서 가져오기 가능 |
+
+---
+## 5. 실습 — 환경 구성
+
+---
+### 가상환경 생성
 
 | 파일 | 설명 |
 |------|------|
-| `.python-version` | 실습에 사용할 Python 버전 (`3.12`) |
+| `.python-version` | 실습에 사용할 Python 버전 |
 | `pyproject.toml` | 프로젝트 메타데이터와 의존성 정의 |
 | `uv.lock` | 재현 가능한 설치를 위한 잠금 파일 |
 
-> 새 프로젝트에서 같은 환경을 직접 만들 경우:
-```bash
-uv init --name venv --python 3.12
-```
-
 ---
-### 3-2. 패키지 설치
-
 ```bash
 # pyproject.toml과 uv.lock 기준으로 의존성 설치
 uv sync
-
-# 설치된 패키지 확인
-uv pip list
 ```
-
-> 현재 예제의 주요 의존성:
-
-| 패키지 | 버전 |
-|--------|------|
-| `fastapi` | `0.115.12` |
-| `uvicorn[standard]` | `0.34.3` |
-
-> 새 프로젝트에서 직접 추가할 경우:
-
-```bash
-uv add "fastapi==0.115.12" "uvicorn[standard]==0.34.3"
-```
+![alt text](./img/image.png)
 
 ---
-### 3-3. Hello World 작성
+### 서버 실행
 
-`main.py`를 열고 아래 내용을 작성한다:
+| 옵션 | 설명 |
+|------|------|
+| `main` | `main.py` 파일 |
+| `app` | 파일 안의 FastAPI 인스턴스 변수명 |
+| `--reload` | 파일 저장 시 자동 재시작 (개발용) |
+| `--port` | 접속 Port |
 
+---
+```bash
+uvicorn main:app --reload --port 8001
+```
+![alt text](./img/image-1.png)
+
+---
+### [Swagger UI 접속](http://127.0.0.1:8001/docs) 
+> http://127.0.0.1:8001/docs
+
+---
+- FastAPI 애플리케이션을 생성하면서 API 메타데이터
 ```python
 from fastapi import FastAPI
 
 app = FastAPI(
-    title="My First API",
-    description="FastAPI 입문 강의 실습",
-    version="0.1.0",
+    title="My First API",   # Swagger UI 제목
+    description="FastAPI 입문 강의 실습",   # API 소개 문구
+    version="0.1.0",    # API 버전
 )
 
+```
 
+---
+![alt text](./img/image-2.png)
+
+---
+- API Endpoint 목록
+```python
 @app.get("/")
 def read_root():
     return {"message": "Hello, FastAPI!"}
 
 
-...
+@app.get("/hello/{name}")
+def hello(name: str):
+    return {"message": f"안녕하세요, {name}님!"}
+
+
+@app.get("/info")
+def get_info():
+    return {
+        "framework": "FastAPI",
+        "language": "Python",
+        "docs_url": "/docs",
+    }
+
 ```
 
 ---
-### 3-4. 서버 실행
+![alt text](./img/image-3.png)
 
-```bash
-uv run uvicorn main:app --reload --port 8001
+---
+- FastAPI가 자동으로 422 Validation Error 응답을 OpenAPI 문서에 추가하고, 그 응답 형식을 설명하기 위해 기본 스키마인 `HTTPValidationError`, `ValidationError`를 Schemas에 넣습니다.
 
-# 출력 예시
-# INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
-# INFO:     Started reloader process
-```
-
-| 옵션 | 설명 |
-|------|------|
-| `uv run` | 프로젝트 가상환경에서 명령 실행 |
-| `main` | `main.py` 파일 |
-| `app` | 파일 안의 FastAPI 인스턴스 변수명 |
-| `--reload` | 파일 저장 시 자동 재시작 (개발용) |
+![alt text](./img/image-4.png)
