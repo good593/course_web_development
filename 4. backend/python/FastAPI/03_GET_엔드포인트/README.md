@@ -18,6 +18,12 @@ paginate: true
 > Path Parameter와 Query Parameter를 FastAPI 코드로 어떻게 받는지 구현합니다.
 
 ---
+### URL(Uniform Resource Locators) 구조
+> 서버에 자원을 요청하기 위해 입력하는 영문 주소입니다.
+
+![w:1300](./img/image.png)
+
+---
 ### Path Parameter — 특정 리소스 식별
 
 ```python
@@ -91,10 +97,9 @@ def get_item(
 | `Optional[str]` | `"hello"` 또는 `None` |
 
 ---
-## 3. 응답 모델 (Response Model)
-- [Pydantic](https://pydantic.dev/docs/validation/latest/get-started/)
-    - Pydantic(파이댄틱)은 파이썬(Python) 타입 힌트를 활용하여 데이터 유효성 검사(Validation) 와 설정 관리(Settings Management) 를 수행하는 핵심 라이브러리입니다.
-    - 개발자가 정의한 데이터 구조와 타입에 맞춰 외부의 불완전한 데이터를 검증하고, 파이썬 객체로 안전하게 변환(파싱)해 주는 역할을 합니다.
+## 3. 응답 모델 (Response Model) - [Pydantic](https://pydantic.dev/docs/validation/latest/get-started/)
+- Pydantic(파이댄틱)은 파이썬(Python) 타입 힌트를 활용하여 데이터 유효성 검사(Validation) 와 설정 관리(Settings Management) 를 수행하는 핵심 라이브러리입니다.
+- 개발자가 정의한 데이터 구조와 타입에 맞춰 외부의 불완전한 데이터를 검증하고, 파이썬 객체로 안전하게 변환(파싱)해 주는 역할을 합니다.
 
 ---
 ### 왜 필요한가?
@@ -139,32 +144,77 @@ def get_user(user_id: int):
 ```
 
 ---
-## 4. 실습 — GET 엔드포인트 3종 구현
+## 4. 서버 실행 및 Swagger 실습
 
 ---
-### 4-1. 데이터 준비 (인메모리)
-
-```python
-# main.py
-
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional, List
-
-app = FastAPI(title="Item API", version="0.1.0")
-
-# 임시 데이터베이스 (딕셔너리)
-fake_db: dict[int, dict] = {
-    1: {"id": 1, "name": "노트북", "price": 1500000, "category": "전자기기", "in_stock": True},
-    2: {"id": 2, "name": "마우스", "price": 35000,   "category": "전자기기", "in_stock": True},
-    3: {"id": 3, "name": "책상",   "price": 250000,  "category": "가구",     "in_stock": False},
-    4: {"id": 4, "name": "의자",   "price": 180000,  "category": "가구",     "in_stock": True},
-}
+### 가상환경 생성
+```bash
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
+uv sync
 ```
 
----
-### 4-2. 응답 스키마 정의
+### 서버 실행
 
+```bash
+python -m uvicorn main:app --reload --port 8001
+```
+
+> Windows에서 `uvicorn main:app ...` 실행 시 `Failed to canonicalize script path`가 나오면
+> 위처럼 `python -m uvicorn` 방식으로 실행합니다.
+
+---
+### Swagger UI 실습 (http://localhost:8001/docs)
+
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
+
+---
+### 실습 1. 전체 아이템 목록 조회
+> `GET /items`
+
+![alt text](./img/image-1.png)
+
+---
+```python
+@app.get("/items", response_model=List[ItemResponse])
+def get_items(skip: int = 0, limit: int = 10):
+    """아이템 목록 조회 (페이지네이션)"""
+    ...
+```
+![alt text](./img/image-2.png)
+
+---
+![alt text](./img/image-3.png)
+
+---
+### 실습 2. 페이지네이션으로 일부만 조회
+> `GET /items`
+
+![alt text](./img/image-4.png)
+
+---
+> 확인할 것
+> - 첫 번째 아이템을 건너뛰고 2개만 조회합니다.
+> - 응답에는 `마우스`, `책상`만 포함됩니다.
+
+![alt text](./img/image-5.png)
+
+---
+### 실습 3. Path Parameter로 단건 조회
+> `GET /items/{item_id}`
+
+![alt text](./img/image-6.png)
+
+---
+```python
+@app.get("/items/{item_id}", response_model=ItemResponse)
+def get_item(item_id: int):
+    """특정 아이템 단건 조회"""
+    ...
+```
+![alt text](./img/image-7.png)
+
+---
+> `response_model=ItemResponse`에 정의된 필드만 응답됩니다.
 ```python
 class ItemResponse(BaseModel):
     id: int
@@ -173,32 +223,15 @@ class ItemResponse(BaseModel):
     category: str
     in_stock: bool
 ```
+![alt text](./img/image-8.png)
 
 ---
-### 4-3. 목록 조회 (Query Parameter)
+### 실습 4. 존재하지 않는 아이템 조회
+> `GET /items/{item_id}`
 
-```python
-@app.get("/items", response_model=List[ItemResponse])
-def get_items(skip: int = 0, limit: int = 10):
-    """
-    아이템 목록 조회
-
-    - **skip**: 건너뛸 개수 (기본값: 0)
-    - **limit**: 최대 반환 개수 (기본값: 10)
-    """
-    items = list(fake_db.values())
-    return items[skip : skip + limit]
-```
-
-```
-GET /items           → 전체 목록 (최대 10개)
-GET /items?skip=2    → 2개 건너뛰고 반환
-GET /items?limit=2   → 최대 2개만 반환
-```
+![alt text](./img/image-9.png)
 
 ---
-### 4-4. 단건 조회 (Path Parameter)
-
 ```python
 @app.get("/items/{item_id}", response_model=ItemResponse)
 def get_item(item_id: int):
@@ -207,16 +240,30 @@ def get_item(item_id: int):
         raise HTTPException(status_code=404, detail=f"Item {item_id} not found")
     return fake_db[item_id]
 ```
-
-```
-GET /items/1    → 노트북 반환
-GET /items/99   → 404 Not Found
-GET /items/abc  → 422 Unprocessable Entity (타입 오류)
-```
+![alt text](./img/image-10.png)
 
 ---
-### 4-5. 검색 (Query Parameter 다중)
+### 실습 5. Path Parameter 타입 검증 확인
+> `GET /items/{item_id}`
 
+![alt text](./img/image-11.png)
+
+---
+```python
+@app.get("/items/{item_id}", response_model=ItemResponse)
+def get_item(item_id: int):
+    """특정 아이템 단건 조회"""
+    ...
+```
+![alt text](./img/image-12.png)
+
+---
+### 실습 6. 키워드로 아이템 검색
+> `GET /items/search`
+
+![alt text](./img/image-13.png)
+
+---
 ```python
 @app.get("/items/search", response_model=List[ItemResponse])
 def search_items(
@@ -226,55 +273,56 @@ def search_items(
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
 ):
-    """
-    아이템 검색
-
-    - **keyword**: 이름에 포함된 키워드
-    - **category**: 카테고리 필터
-    - **in_stock**: 재고 여부 필터
-    - **min_price**: 최소 가격
-    - **max_price**: 최대 가격
-    """
+    """아이템 검색 (다중 Query Parameter 필터)"""
     results = list(fake_db.values())
 
-    if keyword:
-        results = [i for i in results if keyword in i["name"]]
-    if category:
-        results = [i for i in results if i["category"] == category]
-    if in_stock is not None:
-        results = [i for i in results if i["in_stock"] == in_stock]
-    if min_price is not None:
-        results = [i for i in results if i["price"] >= min_price]
-    if max_price is not None:
-        results = [i for i in results if i["price"] <= max_price]
-
-    return results
+    ...
 ```
 
 ---
-> **주의** : `/items/search`와 `/items/{item_id}`가 충돌할 수 있다.
-> FastAPI는 **위에서 아래로** 경로를 매칭하므로 `/items/search`를 **먼저** 정의해야 한다.
-
-```python
-# 올바른 순서
-@app.get("/items/search")   # 먼저 정의
-def search_items(...): ...
-
-@app.get("/items/{item_id}")  # 나중에 정의
-def get_item(item_id: int): ...
-
-# 잘못된 순서 → search가 item_id로 잡힘
-@app.get("/items/{item_id}")
-@app.get("/items/search")
-```
+![alt text](./img/image-14.png)
 
 ---
-## 5. 핵심 요약
+- `keyword` 값이 이름에 포함된 아이템만 조회됩니다.
+- 응답에는 `마우스`가 포함됩니다.
 
-| 개념 | 사용법 |
-|------|--------|
-| Path Parameter | `@app.get("/items/{id}")` + 함수 인자 |
-| Query Parameter | 기본값 있는 함수 인자 |
-| 404 반환 | `raise HTTPException(status_code=404, ...)` |
-| 응답 모델 | `@app.get(..., response_model=Model)` |
-| 경로 우선순위 | 고정 경로(`/search`)를 변수 경로(`/{id}`)보다 먼저 선언 |
+![alt text](./img/image-15.png)
+
+---
+### 실습 7. 카테고리와 재고 상태로 필터링
+> `GET /items/search`
+
+---
+![alt text](./img/image-16.png)
+
+---
+- `category`가 `가구`인 아이템 중 재고가 있는 것만 조회합니다.
+- `책상`은 `in_stock=false`이므로 제외되고, `의자`만 응답됩니다.
+
+![alt text](./img/image-17.png)
+
+---
+### 실습 8. 가격 범위로 검색
+> `GET /items/search`
+
+---
+![alt text](./img/image-18.png)
+
+---
+- 가격이 100,000원 이상 300,000원 이하인 아이템만 조회합니다.
+- 응답에는 `책상`, `의자`가 포함됩니다.
+
+![alt text](./img/image-19.png)
+
+---
+### 실습 9. 검색 결과가 없는 경우
+> `GET /items/search`
+
+---
+![alt text](./img/image-20.png)
+
+---
+- 검색 API는 조건에 맞는 데이터가 없으면 빈 배열을 반환합니다.
+
+![alt text](./img/image-21.png)
+

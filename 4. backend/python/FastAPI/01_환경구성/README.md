@@ -161,7 +161,7 @@ uv sync
 
 ---
 ```bash
-uvicorn main:app --reload --port 8001
+python -m uvicorn main:app --reload --port 8001
 ```
 ![alt text](./img/image-1.png)
 
