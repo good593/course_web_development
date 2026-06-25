@@ -10,18 +10,15 @@ marp: true
 paginate: true
 ---
 # GET 엔드포인트 구현
+- 데이터를 **URL에 포함** (Query String)
+- **조회 전용** — 서버 상태를 바꾸지 않는다
+- 브라우저 히스토리/북마크 가능
+- URL 길이 제한 있음 (~2000자)
+- **민감한 정보 전송 금지** (URL이 로그에 남음)
 
 ---
-
 ## 1. Path Parameter vs Query Parameter
-
 > Path Parameter와 Query Parameter를 FastAPI 코드로 어떻게 받는지 구현합니다.
-
----
-### URL(Uniform Resource Locators) 구조
-> 서버에 자원을 요청하기 위해 입력하는 영문 주소입니다.
-
-![w:1300](./img/image.png)
 
 ---
 ### Path Parameter — 특정 리소스 식별
@@ -66,6 +63,9 @@ GET /items?skip=0&limit=5 → skip=0, limit=5
 | 유저 목록 페이지 `/users?page=2` | Query Parameter |
 | 특정 게시글 `/posts/10` | Path Parameter |
 | 카테고리 필터 `/posts?category=tech` | Query Parameter |
+
+![w:1300](./img/image.png)
+
 
 ---
 ## 2. 타입 힌트 기초
@@ -144,7 +144,39 @@ def get_user(user_id: int):
 ```
 
 ---
-## 4. 서버 실행 및 Swagger 실습
+## [4. HTTP 상태 코드](https://developer.mozilla.org/ko/docs/Web/HTTP/Reference/Status)
+> 서버가 클라이언트에게 **"결과가 어떻게 됐는지"** 알려주는 숫자 코드
+
+---
+### 2xx — 성공
+
+| 코드 | 이름 | 언제 사용 |
+|------|------|----------|
+| **200** | OK | 일반적인 성공 (GET, PUT, PATCH) |
+| **201** | Created | 리소스 생성 성공 (POST) |
+| **204** | No Content | 성공했지만 응답 본문 없음 (DELETE) |
+
+---
+### 4xx — 클라이언트 오류
+
+| 코드 | 이름 | 언제 사용 |
+|------|------|----------|
+| **400** | Bad Request | 잘못된 요청 (형식 오류, 비즈니스 로직 위반) |
+| **401** | Unauthorized | 인증 필요 |
+| **403** | Forbidden | 권한 없음 |
+| **404** | Not Found | 리소스 없음 |
+| **422** | Unprocessable Entity | 데이터 검증 실패 (FastAPI 기본) |
+
+---
+### 5xx — 서버 오류
+
+| 코드 | 이름 | 언제 사용 |
+|------|------|----------|
+| **500** | Internal Server Error | 서버 내부 오류 |
+| **503** | Service Unavailable | 서버 일시 중단 |
+
+---
+## 5. 서버 실행 및 Swagger 실습
 
 ---
 ### 가상환경 생성
@@ -159,16 +191,13 @@ uv sync
 python -m uvicorn main:app --reload --port 8001
 ```
 
-> Windows에서 `uvicorn main:app ...` 실행 시 `Failed to canonicalize script path`가 나오면
-> 위처럼 `python -m uvicorn` 방식으로 실행합니다.
-
 ---
 ### Swagger UI 실습 (http://localhost:8001/docs)
 
 > 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
 
 ---
-### 실습 1. 전체 아이템 목록 조회
+#### 실습 1. 전체 아이템 목록 조회
 > `GET /items`
 
 ![alt text](./img/image-1.png)
@@ -186,7 +215,7 @@ def get_items(skip: int = 0, limit: int = 10):
 ![alt text](./img/image-3.png)
 
 ---
-### 실습 2. 페이지네이션으로 일부만 조회
+#### 실습 2. 페이지네이션으로 일부만 조회
 > `GET /items`
 
 ![alt text](./img/image-4.png)
@@ -199,7 +228,7 @@ def get_items(skip: int = 0, limit: int = 10):
 ![alt text](./img/image-5.png)
 
 ---
-### 실습 3. Path Parameter로 단건 조회
+#### 실습 3. Path Parameter로 단건 조회
 > `GET /items/{item_id}`
 
 ![alt text](./img/image-6.png)
@@ -226,7 +255,7 @@ class ItemResponse(BaseModel):
 ![alt text](./img/image-8.png)
 
 ---
-### 실습 4. 존재하지 않는 아이템 조회
+#### 실습 4. 존재하지 않는 아이템 조회
 > `GET /items/{item_id}`
 
 ![alt text](./img/image-9.png)
@@ -243,7 +272,7 @@ def get_item(item_id: int):
 ![alt text](./img/image-10.png)
 
 ---
-### 실습 5. Path Parameter 타입 검증 확인
+#### 실습 5. Path Parameter 타입 검증 확인
 > `GET /items/{item_id}`
 
 ![alt text](./img/image-11.png)
@@ -258,7 +287,7 @@ def get_item(item_id: int):
 ![alt text](./img/image-12.png)
 
 ---
-### 실습 6. 키워드로 아이템 검색
+#### 실습 6. 키워드로 아이템 검색
 > `GET /items/search`
 
 ![alt text](./img/image-13.png)
@@ -289,7 +318,7 @@ def search_items(
 ![alt text](./img/image-15.png)
 
 ---
-### 실습 7. 카테고리와 재고 상태로 필터링
+#### 실습 7. 카테고리와 재고 상태로 필터링
 > `GET /items/search`
 
 ---
@@ -302,7 +331,7 @@ def search_items(
 ![alt text](./img/image-17.png)
 
 ---
-### 실습 8. 가격 범위로 검색
+#### 실습 8. 가격 범위로 검색
 > `GET /items/search`
 
 ---
@@ -315,7 +344,7 @@ def search_items(
 ![alt text](./img/image-19.png)
 
 ---
-### 실습 9. 검색 결과가 없는 경우
+#### 실습 9. 검색 결과가 없는 경우
 > `GET /items/search`
 
 ---

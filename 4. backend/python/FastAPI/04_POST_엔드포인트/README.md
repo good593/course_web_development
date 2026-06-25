@@ -10,6 +10,22 @@ marp: true
 paginate: true
 ---
 # POST 엔드포인트 구현
+- 데이터를 **Request Body에 포함**
+- **생성 / 처리** 목적
+- URL에 데이터가 노출되지 않음
+- 데이터 크기 제한 없음
+- 민감한 정보 전송 가능
+
+---
+## GET vs POST
+
+| 항목 | GET | POST |
+|------|-----|------|
+| 데이터 위치 | URL Query String | Request Body |
+| 데이터 크기 | 제한 있음 | 제한 없음 |
+| 보안 | URL에 노출 | Body에 숨김 |
+| 캐싱 | 가능 | 불가 |
+| 목적 | 조회 | 생성/처리 |
 
 ---
 ## 1. Request Body와 Pydantic BaseModel
