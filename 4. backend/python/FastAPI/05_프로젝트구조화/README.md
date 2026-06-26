@@ -12,6 +12,17 @@ paginate: true
 # 프로젝트 구조화 & 종합 실습
 
 ---
+## 핵심 요약
+
+| 개념 | 설명 |
+|------|------|
+| `APIRouter` | 엔드포인트를 모듈별로 분리 |
+| `prefix` | 라우터 내 모든 경로에 공통 접두사 추가 |
+| `tags` | Swagger UI 그룹화 |
+| `include_router` | 메인 앱에 라우터 등록 |
+| `Depends` | 공통 로직 재사용 (의존성 주입) |
+
+---
 ## 1. APIRouter — 엔드포인트 분리
 
 ---
@@ -28,6 +39,7 @@ app = FastAPI()
 @app.get("/items/{id}")
 @app.post("/items")
 @app.get("/orders")
+
 # ... 수십 개의 엔드포인트가 한 파일에
 ```
 
@@ -129,6 +141,16 @@ todo_api/
 ```
 
 ---
+> 각 레이어의 역할:
+
+| 레이어 | 파일 | 역할 |
+|--------|------|------|
+| 진입점 | `main.py` | 앱 생성, 라우터 등록 |
+| 라우터 | `routers/todo.py` | HTTP 엔드포인트 정의 |
+| 스키마 | `schemas/todo.py` | 입출력 데이터 구조 |
+| 모델 | `models/todo.py` | 데이터 저장/조회 로직 |
+
+---
 ### 3-1. 스키마 정의
 
 ```python
@@ -228,68 +250,22 @@ def read_root():
 ```
 
 ---
-## 4. API 동작 확인
+### 3-5. 서버 실행 및 Swagger 실습
 
----
-### Swagger UI에서 순서대로 테스트
-
+#### 가상환경 생성
+```bash
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
+uv sync
 ```
-1. POST /todos  (할 일 3개 생성)
-   {"title": "FastAPI 공부", "priority": 1}
-   {"title": "운동하기", "description": "30분 달리기", "priority": 2}
-   {"title": "책 읽기", "priority": 3}
 
-2. GET /todos   (목록 확인)
-   → total: 3, items: [...]
+#### 서버 실행
 
-3. GET /todos/1  (단건 조회)
-   → 첫 번째 할 일 반환
-
-4. GET /todos/99  (없는 ID)
-   → 404 Not Found
-
-5. POST /todos  (검증 실패)
-   {"title": ""}
-   → 422 Unprocessable Entity
-
-6. GET /todos?limit=2  (페이지네이션)
-   → 2개만 반환
+```bash
+python -m uvicorn main:app --reload --port 8001
 ```
 
 ---
-## 5. 전체 프로젝트 파일 트리
+#### Swagger UI 실습 (http://localhost:8001/docs)
 
-```
-todo_api/
-├── main.py
-├── routers/
-│   ├── __init__.py
-│   └── todo.py
-├── models/
-│   ├── __init__.py
-│   └── todo.py
-└── schemas/
-    ├── __init__.py
-    └── todo.py
-```
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
 
----
-각 레이어의 역할:
-
-| 레이어 | 파일 | 역할 |
-|--------|------|------|
-| 진입점 | `main.py` | 앱 생성, 라우터 등록 |
-| 라우터 | `routers/todo.py` | HTTP 엔드포인트 정의 |
-| 스키마 | `schemas/todo.py` | 입출력 데이터 구조 |
-| 모델 | `models/todo.py` | 데이터 저장/조회 로직 |
-
----
-## 6. 핵심 요약
-
-| 개념 | 설명 |
-|------|------|
-| `APIRouter` | 엔드포인트를 모듈별로 분리 |
-| `prefix` | 라우터 내 모든 경로에 공통 접두사 추가 |
-| `tags` | Swagger UI 그룹화 |
-| `include_router` | 메인 앱에 라우터 등록 |
-| `Depends` | 공통 로직 재사용 (의존성 주입) |
