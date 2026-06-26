@@ -93,10 +93,6 @@ class ItemCreate(BaseModel):
         description="가격 (0보다 커야 함)",
         examples=[15000],
     )
-    category: str = Field(
-        description="카테고리",
-        examples=["전자기기"],
-    )
     in_stock: bool = Field(
         default=True,
         description="재고 여부",
@@ -153,150 +149,7 @@ class ItemResponse(BaseModel):
 ```
 
 ---
-## 4. 실습 — POST 엔드포인트 3종 구현
-
----
-### 4-1. 아이템 생성 API
-
-```python
-app = FastAPI(title="POST 실습 API")
-
-# 인메모리 저장소
-items_db: dict[int, dict] = {}
-next_id = 1
-
-class ItemCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100, description="아이템 이름")
-    price: float = Field(gt=0, description="가격 (0 초과)")
-    category: str = Field(min_length=1, description="카테고리")
-    in_stock: bool = Field(default=True, description="재고 여부")
-
-class ItemResponse(BaseModel):
-    id: int
-    name: str
-    price: float
-    category: str
-    in_stock: bool
-    created_at: datetime
-
-@app.post("/items", response_model=ItemResponse, status_code=201)
-def create_item(item: ItemCreate):
-    """아이템 생성"""
-    global next_id
-
-    # 중복 이름 체크
-    for existing in items_db.values():
-        if existing["name"] == item.name:
-            raise HTTPException(status_code=400, detail=f"'{item.name}' 이름의 아이템이 이미 존재합니다")
-
-...
-```
-
----
-```
-# 성공
-POST /items
-{"name": "키보드", "price": 89000, "category": "전자기기"}
-→ 201 Created
-
-# 실패: 가격 0 이하
-POST /items
-{"name": "마우스", "price": -100, "category": "전자기기"}
-→ 422 Unprocessable Entity
-
-# 실패: 중복 이름
-POST /items (키보드 두 번째)
-→ 400 Bad Request
-```
-
----
-### 4-2. 유저 등록 API (이메일 검증)
-
-```python
-@app.post("/users", response_model=UserResponse, status_code=201)
-def create_user(user: UserCreate):
-    """유저 등록"""
-    global next_user_id
-
-    # 이메일 중복 체크
-    for existing in users_db.values():
-        if existing["email"] == user.email:
-            raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다")
-
-    new_user = {
-        "id": next_user_id,
-        "name": user.name,
-        "email": user.email,
-        "age": user.age,
-        "password_hash": fake_hash_password(user.password),
-        # password 원문은 저장하지 않고 응답 모델에서도 제외됨
-        "created_at": datetime.now(),
-    }
-    users_db[next_user_id] = new_user
-    next_user_id += 1
-
-    return new_user
-```
-
----
-```
-# 성공
-POST /users
-{"name": "홍길동", "email": "hong@example.com", "password": "pass1234"}
-→ 201 Created (password 없는 응답)
-
-# 실패: 잘못된 이메일
-POST /users
-{"name": "홍길동", "email": "not-an-email", "password": "pass1234"}
-→ 422 Unprocessable Entity
-
-# 실패: 비밀번호 너무 짧음
-POST /users
-{"name": "홍길동", "email": "hong@example.com", "password": "123"}
-→ 422 Unprocessable Entity
-```
-
----
-### 4-3. 로그인 API (입력값 검증)
-
-```python
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=1)
-
-
-class LoginResponse(BaseModel):
-    message: str
-    user_name: str
-    email: str
-
-
-@app.post("/login", response_model=LoginResponse)
-def login(credentials: LoginRequest):
-    """로그인 (간단한 예시 — 실제 환경에서는 JWT 사용)"""
-
-    # 유저 찾기
-    found_user = None
-    for user in users_db.values():
-        if user["email"] == credentials.email:
-            found_user = user
-            break
-
-    if not found_user:
-        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다")
-
-    if not verify_password(credentials.password, found_user["password_hash"]):
-        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다")
-
-    return LoginResponse(
-        message="로그인 성공",
-        user_name=found_user["name"],
-        email=found_user["email"],
-    )
-```
-
----
-## 5. 422 에러 응답 분석
+## 4. 422 에러 응답 분석
 
 ```json
 {
@@ -316,14 +169,26 @@ def login(credentials: LoginRequest):
 - `msg` : 오류 메시지
 
 ---
+## 5. 서버 실행 및 Swagger 실습
 
-## 6. 핵심 요약
+---
+### 가상환경 생성
+```bash
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
+uv sync
+```
 
-| 개념 | 사용법 |
-|------|--------|
-| Request Body | `BaseModel`을 함수 인자 타입으로 지정 |
-| 필드 검증 | `Field(gt=0, min_length=1, ...)` |
-| 이메일 검증 | `EmailStr` (pydantic[email] 필요) |
-| 201 응답 | `@app.post(..., status_code=201)` |
-| 응답에서 필드 제외 | 입력/출력 스키마 분리 |
-| 비즈니스 로직 오류 | `raise HTTPException(status_code=400, ...)` |
+### 서버 실행
+
+```bash
+python -m uvicorn main:app --reload --port 8001
+```
+
+---
+### Swagger UI 실습 (http://localhost:8001/docs)
+
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
+
+
+
+
