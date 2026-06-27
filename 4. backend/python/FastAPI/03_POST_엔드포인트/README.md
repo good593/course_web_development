@@ -189,6 +189,287 @@ python -m uvicorn main:app --reload --port 8001
 
 > 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
 
+> 이 예제는 메모리 DB를 사용하므로 서버를 재시작하면 데이터가 초기화됩니다.
 
+---
+#### 실습 1. 아이템 생성
+> `POST /items`
+
+```json
+{
+    "name": "키보드",
+    "price": 89000,
+    "category": "전자기기",
+    "in_stock": true
+}
+```
+
+---
+```python
+@app.post("/items", response_model=ItemResponse, status_code=201, tags=["items"])
+def create_item(item: ItemCreate):
+    """아이템 생성"""
+    ...
+```
+
+---
+> 확인할 것
+> - 응답 상태 코드가 `201 Created`입니다.
+> - `id`, `created_at`은 클라이언트가 보낸 값이 아니라 서버에서 생성됩니다.
+> - 응답은 `response_model=ItemResponse`에 정의된 필드만 포함합니다.
+
+```json
+{
+    "id": 1,
+    "name": "키보드",
+    "price": 89000,
+    "category": "전자기기",
+    "in_stock": true,
+    "created_at": "2026-06-27T12:00:00.000000"
+}
+```
+
+---
+#### 실습 2. 기본값이 적용되는 아이템 생성
+> `POST /items`
+
+```json
+{
+    "name": "마우스",
+    "price": 35000,
+    "category": "전자기기"
+}
+```
+
+---
+```python
+class ItemCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100, description="아이템 이름")
+    price: float = Field(gt=0, description="가격 (0 초과)")
+    category: str = Field(min_length=1, description="카테고리")
+    in_stock: bool = Field(default=True, description="재고 여부")
+```
+
+---
+> 확인할 것
+> - 요청 Body에서 `in_stock`을 생략해도 응답에는 `true`로 들어갑니다.
+> - `Field(default=True)`가 Body 기본값을 만들어 줍니다.
+
+---
+#### 실습 3. 아이템 Body 검증 실패 확인
+> `POST /items`
+
+```json
+{
+    "name": "",
+    "price": 0,
+    "category": ""
+}
+```
+
+---
+> 확인할 것
+> - 응답 상태 코드가 `422 Unprocessable Entity`입니다.
+> - `detail` 배열의 `loc`에서 어떤 Body 필드가 실패했는지 확인합니다.
+> - `name`, `category`는 최소 길이 규칙을, `price`는 `gt=0` 규칙을 통과하지 못합니다.
+
+---
+#### 실습 4. 중복 아이템 생성 오류 확인
+> `POST /items`
+
+실습 1에서 만든 `키보드`를 다시 생성합니다.
+
+```json
+{
+    "name": "키보드",
+    "price": 89000,
+    "category": "전자기기",
+    "in_stock": true
+}
+```
+
+---
+```python
+for existing in items_db.values():
+    if existing["name"] == item.name:
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{item.name}' 이름의 아이템이 이미 존재합니다",
+        )
+```
+
+---
+> 확인할 것
+> - 응답 상태 코드가 `400 Bad Request`입니다.
+> - 타입 검증은 통과했지만, 서버의 비즈니스 규칙에서 중복 이름을 거절합니다.
+
+```json
+{
+    "detail": "'키보드' 이름의 아이템이 이미 존재합니다"
+}
+```
+
+---
+#### 실습 5. 유저 등록
+> `POST /users`
+
+```json
+{
+    "name": "홍길동",
+    "email": "hong@example.com",
+    "password": "password123",
+    "age": 30
+}
+```
+
+---
+```python
+@app.post("/users", response_model=UserResponse, status_code=201, tags=["users"])
+def create_user(user: UserCreate):
+    """유저 등록"""
+    ...
+```
+
+---
+> 확인할 것
+> - 응답 상태 코드가 `201 Created`입니다.
+> - 요청에는 `password`가 있었지만 응답에는 `password`, `password_hash`가 없습니다.
+> - 입력 스키마 `UserCreate`와 출력 스키마 `UserResponse`를 분리했기 때문입니다.
+
+```python
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    age: Optional[int]
+    created_at: datetime
+```
+
+---
+#### 실습 6. 유저 Body 검증 실패 확인
+> `POST /users`
+
+```json
+{
+    "name": "김",
+    "email": "not-email",
+    "password": "1234",
+    "age": 200
+}
+```
+
+---
+```python
+class UserCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=50, description="이름 (2~50자)")
+    email: EmailStr = Field(description="이메일 주소")
+    password: str = Field(min_length=8, description="비밀번호 (8자 이상)")
+    age: Optional[int] = Field(default=None, ge=0, le=150, description="나이")
+```
+
+---
+> 확인할 것
+> - 응답 상태 코드가 `422 Unprocessable Entity`입니다.
+> - `name`, `email`, `password`, `age`가 각각 어떤 규칙을 위반했는지 `detail`에서 확인합니다.
+
+---
+#### 실습 7. 중복 이메일 등록 오류 확인
+> `POST /users`
+
+실습 5에서 사용한 이메일을 다시 사용합니다.
+
+```json
+{
+    "name": "김철수",
+    "email": "hong@example.com",
+    "password": "password456",
+    "age": 25
+}
+```
+
+---
+```python
+for existing in users_db.values():
+    if existing["email"] == user.email:
+        raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다")
+```
+
+---
+> 확인할 것
+> - 응답 상태 코드가 `400 Bad Request`입니다.
+> - 이메일 형식과 비밀번호 길이는 통과했지만, 이미 등록된 이메일이라서 거절됩니다.
+
+```json
+{
+    "detail": "이미 등록된 이메일입니다"
+}
+```
+
+---
+#### 실습 8. 로그인 성공
+> `POST /login`
+
+실습 5에서 등록한 이메일과 비밀번호를 사용합니다.
+
+```json
+{
+    "email": "hong@example.com",
+    "password": "password123"
+}
+```
+
+---
+```python
+@app.post("/login", response_model=LoginResponse, tags=["auth"])
+def login(credentials: LoginRequest):
+    """로그인"""
+    ...
+```
+
+---
+> 확인할 것
+> - 응답 상태 코드가 `200 OK`입니다.
+> - 서버는 저장된 `password_hash`와 요청으로 들어온 `password`를 비교합니다.
+
+```json
+{
+    "message": "로그인 성공",
+    "user_name": "홍길동",
+    "email": "hong@example.com"
+}
+```
+
+---
+#### 실습 9. 로그인 실패
+> `POST /login`
+
+비밀번호를 일부러 틀리게 입력합니다.
+
+```json
+{
+    "email": "hong@example.com",
+    "password": "wrong-password"
+}
+```
+
+---
+```python
+if not found_user:
+    raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다")
+if not verify_password(credentials.password, found_user["password_hash"]):
+    raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다")
+```
+
+---
+> 확인할 것
+> - 응답 상태 코드가 `401 Unauthorized`입니다.
+> - 존재하지 않는 이메일과 틀린 비밀번호 모두 같은 메시지를 반환합니다.
+> - 어떤 값이 틀렸는지 자세히 알려주지 않는 것이 일반적인 로그인 오류 처리 방식입니다.
+
+```json
+{
+    "detail": "이메일 또는 비밀번호가 올바르지 않습니다"
+}
+```
 
 
