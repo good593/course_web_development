@@ -1,11 +1,11 @@
 [project]
-name = "venv"
+name = "sqlite-blog-api"
 version = "0.1.0"
-description = "Add your description here"
+description = "FastAPI SQLite blog CRUD lesson"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.115.12",
-    "pydantic==2.11.5",
     "uvicorn[standard]==0.34.3",
 ]
+

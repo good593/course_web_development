@@ -3,11 +3,8 @@ from .blog import (
     CategoryResponse,
     CategoryUpdate,
     CategoryWithPostCount,
-    CommentCreate,
-    CommentResponse,
     PaginatedPosts,
     PostCreate,
-    PostDetailResponse,
     PostResponse,
     PostUpdate,
 )
@@ -17,11 +14,9 @@ __all__ = [
     "CategoryResponse",
     "CategoryUpdate",
     "CategoryWithPostCount",
-    "CommentCreate",
-    "CommentResponse",
     "PaginatedPosts",
     "PostCreate",
-    "PostDetailResponse",
     "PostResponse",
     "PostUpdate",
 ]
+
