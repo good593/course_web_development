@@ -274,16 +274,20 @@ python -m uvicorn main:app --reload --port 8001
 
 ---
 #### Swagger UI 실습 (http://localhost:8001/docs)
-
 > 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
-
-> 이 예제는 메모리 DB를 사용하므로 서버를 재시작하면 Todo 데이터가 초기화됩니다.
 
 ---
 ##### 실습 1. 루트 엔드포인트에서 API 안내 확인
 > `GET /`
 
+![alt text](./img/image.png)
+
 ---
+확인할 것
+- Swagger UI에서 `root` 그룹과 `todos` 그룹이 분리되어 보입니다.
+- 루트 응답에는 Todo API에서 사용할 주요 엔드포인트가 안내됩니다.
+- `todos` 그룹은 `main.py`가 아니라 `routers/todo.py`에 정의되어 있습니다.
+
 ```python
 @app.get("/", tags=["root"])
 def read_root():
@@ -299,22 +303,7 @@ def read_root():
 ```
 
 ---
-> 확인할 것
-> - Swagger UI에서 `root` 그룹과 `todos` 그룹이 분리되어 보입니다.
-> - 루트 응답에는 Todo API에서 사용할 주요 엔드포인트가 안내됩니다.
-> - `todos` 그룹은 `main.py`가 아니라 `routers/todo.py`에 정의되어 있습니다.
-
-```json
-{
-    "message": "Todo API에 오신 것을 환영합니다!",
-    "docs": "/docs",
-    "endpoints": {
-        "목록 조회": "GET /todos",
-        "단건 조회": "GET /todos/{id}",
-        "생성": "POST /todos"
-    }
-}
-```
+![alt text](./img/image-1.png)
 
 ---
 ##### 실습 2. 비어 있는 Todo 목록 조회
@@ -322,7 +311,13 @@ def read_root():
 
 `skip`과 `limit`은 기본값 그대로 실행합니다.
 
+![alt text](./img/image-2.png)
+
 ---
+확인할 것
+- 응답 상태 코드가 `200 OK`입니다.
+- 아직 생성한 Todo가 없으므로 `total`은 `0`, `items`는 빈 배열입니다.
+- `response_model=TodoListResponse` 때문에 목록 응답은 `total`과 `items` 구조로 고정됩니다.
 ```python
 @router.get("", response_model=TodoListResponse)
 def get_todos(skip: int = 0, limit: int = 10):
@@ -334,17 +329,7 @@ def get_todos(skip: int = 0, limit: int = 10):
 ```
 
 ---
-> 확인할 것
-> - 응답 상태 코드가 `200 OK`입니다.
-> - 아직 생성한 Todo가 없으므로 `total`은 `0`, `items`는 빈 배열입니다.
-> - `response_model=TodoListResponse` 때문에 목록 응답은 `total`과 `items` 구조로 고정됩니다.
-
-```json
-{
-    "total": 0,
-    "items": []
-}
-```
+![alt text](./img/image-3.png)
 
 ---
 ##### 실습 3. 첫 번째 Todo 생성
@@ -359,6 +344,13 @@ def get_todos(skip: int = 0, limit: int = 10):
 ```
 
 ---
+![alt text](./img/image-4.png)
+
+---
+확인할 것
+- 응답 상태 코드가 `201 Created`입니다.
+- 요청 Body에는 없던 `id`, `completed`, `created_at`이 응답에 추가됩니다.
+- `completed`는 새 Todo를 만들 때 항상 `false`로 시작합니다.
 ```python
 @router.post("", response_model=TodoResponse, status_code=201)
 def create_todo(todo: TodoCreate):
@@ -371,21 +363,7 @@ def create_todo(todo: TodoCreate):
 ```
 
 ---
-> 확인할 것
-> - 응답 상태 코드가 `201 Created`입니다.
-> - 요청 Body에는 없던 `id`, `completed`, `created_at`이 응답에 추가됩니다.
-> - `completed`는 새 Todo를 만들 때 항상 `false`로 시작합니다.
-
-```json
-{
-    "id": 1,
-    "title": "FastAPI 프로젝트 구조화 복습",
-    "description": "main.py, routers, schemas, models 역할 정리하기",
-    "priority": 1,
-    "completed": false,
-    "created_at": "2026-06-27T12:00:00.000000"
-}
-```
+![alt text](./img/image-5.png)
 
 ---
 ##### 실습 4. 기본 우선순위가 적용되는 Todo 생성
@@ -401,6 +379,12 @@ def create_todo(todo: TodoCreate):
 ```
 
 ---
+![alt text](./img/image-6.png)
+
+---
+확인할 것
+- 요청 Body에서 `priority`를 생략해도 응답에는 `2`가 들어갑니다.
+- 이 기본값은 `schemas/todo.py`의 `Field(default=2)`에서 만들어집니다.
 ```python
 class TodoCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200, description="할 일 제목")
@@ -409,9 +393,7 @@ class TodoCreate(BaseModel):
 ```
 
 ---
-> 확인할 것
-> - 요청 Body에서 `priority`를 생략해도 응답에는 `2`가 들어갑니다.
-> - 이 기본값은 `schemas/todo.py`의 `Field(default=2)`에서 만들어집니다.
+![alt text](./img/image-7.png)
 
 ---
 ##### 실습 5. 설명 없이 Todo 생성
@@ -427,17 +409,14 @@ class TodoCreate(BaseModel):
 ```
 
 ---
-> 확인할 것
-> - 응답 상태 코드가 `201 Created`입니다.
-> - `description`은 선택 필드이므로 응답에서 `null`로 표시됩니다.
-> - 실제 요청 경로는 `@router.post("")`와 `prefix="/todos"`가 합쳐진 `/todos`입니다.
+![alt text](./img/image-8.png)
 
-```python
-router = APIRouter(
-    prefix="/todos",
-    tags=["todos"],
-)
-```
+---
+확인할 것
+- 응답 상태 코드가 `201 Created`입니다.
+- `description`은 선택 필드이므로 응답에서 `null`로 표시됩니다.
+
+![alt text](./img/image-9.png)
 
 ---
 ##### 실습 6. 생성된 Todo 목록 다시 조회
@@ -445,17 +424,14 @@ router = APIRouter(
 
 `skip`과 `limit`은 기본값 그대로 실행합니다.
 
+![alt text](./img/image-10.png)
+
 ---
 > 확인할 것
-> - 실습 3, 4, 5에서 만든 Todo가 `items` 배열에 함께 들어 있습니다.
-> - `total`은 전체 Todo 개수입니다.
-> - `items`는 `TodoResponse` 목록이므로 각 Todo에 `id`, `title`, `description`, `priority`, `completed`, `created_at`이 포함됩니다.
+- `total`은 전체 Todo 개수입니다.
+- `items`는 `TodoResponse` 목록이므로 각 Todo에 `id`, `title`, `description`, `priority`, `completed`, `created_at`이 포함됩니다.
 
-```python
-class TodoListResponse(BaseModel):
-    total: int
-    items: list[TodoResponse]
-```
+![alt text](./img/image-11.png)
 
 ---
 ##### 실습 7. 페이지네이션으로 일부 Todo만 조회
@@ -467,6 +443,13 @@ class TodoListResponse(BaseModel):
 | `limit` | `1` |
 
 ---
+![alt text](./img/image-12.png)
+
+---
+확인할 것
+- `total`은 전체 개수이므로 그대로 유지됩니다.
+- `items`에는 첫 번째 Todo를 건너뛴 뒤 1개만 들어옵니다.
+- 페이지네이션 계산은 `models/todo.py`의 `get_all()`에서 처리합니다.
 ```python
 def get_all(self, skip: int = 0, limit: int = 10) -> list[dict]:
     items = list(self._data.values())
@@ -474,10 +457,7 @@ def get_all(self, skip: int = 0, limit: int = 10) -> list[dict]:
 ```
 
 ---
-> 확인할 것
-> - `total`은 전체 개수이므로 그대로 유지됩니다.
-> - `items`에는 첫 번째 Todo를 건너뛴 뒤 1개만 들어옵니다.
-> - 페이지네이션 계산은 `models/todo.py`의 `get_all()`에서 처리합니다.
+![alt text](./img/image-13.png)
 
 ---
 ##### 실습 8. Path Parameter로 단건 조회
@@ -487,7 +467,13 @@ def get_all(self, skip: int = 0, limit: int = 10) -> list[dict]:
 |----------------|--------|
 | `todo_id` | `1` |
 
+![alt text](./img/image-14.png)
+
 ---
+확인할 것
+- 응답 상태 코드가 `200 OK`입니다.
+- `todo_id`는 URL 경로에서 받는 Path Parameter입니다.
+- 응답은 `TodoResponse` 스키마에 정의된 필드만 포함합니다.
 ```python
 @router.get("/{todo_id}", response_model=TodoResponse)
 def get_todo(todo_id: int):
@@ -499,10 +485,7 @@ def get_todo(todo_id: int):
 ```
 
 ---
-> 확인할 것
-> - 응답 상태 코드가 `200 OK`입니다.
-> - `todo_id`는 URL 경로에서 받는 Path Parameter입니다.
-> - 응답은 `TodoResponse` 스키마에 정의된 필드만 포함합니다.
+![alt text](./img/image-15.png)
 
 ---
 ##### 실습 9. 존재하지 않는 Todo 조회
@@ -512,16 +495,14 @@ def get_todo(todo_id: int):
 |----------------|--------|
 | `todo_id` | `999` |
 
----
-> 확인할 것
-> - 응답 상태 코드가 `404 Not Found`입니다.
-> - Path Parameter 타입은 맞지만, 메모리 DB에 해당 ID가 없어서 라우터에서 직접 예외를 발생시킵니다.
+![alt text](./img/image-16.png)
 
-```json
-{
-    "detail": "Todo 999 not found"
-}
-```
+---
+확인할 것
+- 응답 상태 코드가 `404 Not Found`입니다.
+- Path Parameter 타입은 맞지만, 메모리 DB에 해당 ID가 없어서 라우터에서 직접 예외를 발생시킵니다.
+
+![alt text](./img/image-17.png)
 
 ---
 ##### 실습 10. Todo Body 검증 실패 확인
@@ -536,11 +517,16 @@ def get_todo(todo_id: int):
 ```
 
 ---
-> 확인할 것
-> - 응답 상태 코드가 `422 Unprocessable Entity`입니다.
-> - `title`은 `min_length=1` 규칙을 통과하지 못합니다.
-> - `priority`는 `ge=1`, `le=3` 범위를 벗어납니다.
-> - 오류 응답의 `loc`에서 실패한 Body 필드를 확인합니다.
+![alt text](./img/image-18.png)
+
+---
+확인할 것
+- 응답 상태 코드가 `422 Unprocessable Entity`입니다.
+- `title`은 `min_length=1` 규칙을 통과하지 못합니다.
+- `priority`는 `ge=1`, `le=3` 범위를 벗어납니다.
+- 오류 응답의 `loc`에서 실패한 Body 필드를 확인합니다.
+
+![alt text](./img/image-19.png)
 
 ---
 ##### 실습 11. Path Parameter 타입 검증 실패 확인
@@ -550,13 +536,14 @@ def get_todo(todo_id: int):
 |----------------|--------|
 | `todo_id` | `abc` |
 
----
-> 확인할 것
-> - 응답 상태 코드가 `422 Unprocessable Entity`입니다.
-> - `todo_id`는 `int`로 선언되어 있으므로 문자열 `abc`는 라우터 함수가 실행되기 전에 검증에서 실패합니다.
+![alt text](./img/image-20.png)
 
+---
+확인할 것
+- 응답 상태 코드가 `422 Unprocessable Entity`입니다.
+- `todo_id`는 `int`로 선언되어 있으므로 문자열 `abc`는 라우터 함수가 실행되기 전에 검증에서 실패합니다.
 ```python
 def get_todo(todo_id: int):
     ...
 ```
-
+![alt text](./img/image-21.png)
