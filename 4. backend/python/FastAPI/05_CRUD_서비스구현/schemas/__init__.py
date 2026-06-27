@@ -1,8 +1,4 @@
 from .blog import (
-    CategoryCreate,
-    CategoryResponse,
-    CategoryUpdate,
-    CategoryWithPostCount,
     PaginatedPosts,
     PostCreate,
     PostResponse,
@@ -10,13 +6,8 @@ from .blog import (
 )
 
 __all__ = [
-    "CategoryCreate",
-    "CategoryResponse",
-    "CategoryUpdate",
-    "CategoryWithPostCount",
     "PaginatedPosts",
     "PostCreate",
     "PostResponse",
     "PostUpdate",
 ]
-

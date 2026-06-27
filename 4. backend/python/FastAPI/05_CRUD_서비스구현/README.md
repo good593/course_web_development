@@ -9,15 +9,29 @@ style: |
 marp: true
 paginate: true
 ---
-# SQLite 블로그 CRUD 서비스 구현
+# SQLite 게시글 CRUD 서비스 구현
 
 ---
 ## 학습 목표
 
 - 인메모리 저장소 대신 SQLite 파일 DB에 데이터를 저장한다.
-- `CREATE`, `READ`, `UPDATE`, `DELETE` 흐름을 게시글 API로 구현한다.
+- `posts` 테이블 하나로 `CREATE`, `READ`, `UPDATE`, `DELETE` 흐름을 구현한다.
 - `APIRouter`, `schemas`, `models` 구조를 실제 DB 예제에 적용한다.
-- Swagger UI에서 정상 응답, `404`, `409`, `422` 응답을 직접 확인한다.
+- Swagger UI에서 정상 응답, `404`, `422` 응답을 직접 확인한다.
+
+---
+## 이번 장의 원칙
+
+학생들이 RDB를 처음 접한다고 가정합니다.
+
+따라서 이번 장에서는 테이블 관계를 다루지 않습니다.
+
+| 이번 장에서 다루는 것 | 다음 단계에서 다룰 것 |
+|----------------------|----------------------|
+| 테이블 하나 | 여러 테이블 |
+| 게시글 CRUD | 데이터 사이의 관계 |
+| 기본 SQL | 테이블 연결, 조인, 트랜잭션 |
+| sqlite3 표준 라이브러리 | ORM 또는 Repository 계층 |
 
 ---
 ## 핵심 요약
@@ -26,17 +40,17 @@ paginate: true
 |------|------|
 | `sqlite3` | Python 표준 라이브러리 SQLite 드라이버 |
 | `blog.db` | 실행 시 자동 생성되는 SQLite 데이터베이스 파일 |
+| `posts` | 게시글을 저장하는 단일 테이블 |
 | `sqlite3.Row` | 조회 결과를 dict처럼 다룰 수 있게 해주는 row factory |
-| `PRAGMA foreign_keys = ON` | SQLite에서 외래 키 동작을 활성화 |
+| `?` placeholder | SQL에 값을 안전하게 전달하는 방식 |
 | `exclude_unset=True` | PATCH 요청에서 보낸 필드만 수정 |
-| `ON DELETE SET NULL` | 카테고리 삭제 시 게시글은 남기고 `category_id`만 비움 |
 
 ---
 ## 1. 이전 장과 연결
 
 `04_프로젝트구조화`에서는 Todo API를 파일별로 나누었습니다.
 
-```
+```text
 main.py
 routers/todo.py
 schemas/todo.py
@@ -48,20 +62,19 @@ models/todo.py
 | 이전 장 | 이번 장 |
 |--------|---------|
 | 인메모리 dict | SQLite 파일 DB |
-| Todo 데이터 | 블로그 카테고리, 게시글 |
+| Todo 데이터 | 게시글 데이터 |
 | 서버 재시작 시 데이터 사라짐 | `blog.db`에 데이터 유지 |
-| 단순 저장/조회 | CRUD + 검색 + 필터링 |
+| Python dict 조작 | SQL로 행 생성/조회/수정/삭제 |
 
 ---
 ## 2. 프로젝트 구조
 
-```
+```text
 05_CRUD_서비스구현/
 ├── main.py
 ├── models/
 │   └── blog.py
 ├── routers/
-│   ├── categories.py
 │   └── posts.py
 ├── schemas/
 │   └── blog.py
@@ -75,13 +88,32 @@ models/todo.py
 | 파일 | 역할 |
 |------|------|
 | `main.py` | FastAPI 앱 생성, DB 초기화, 라우터 등록 |
-| `schemas/blog.py` | 카테고리/게시글 요청 및 응답 형식 |
+| `schemas/blog.py` | 게시글 요청 및 응답 형식 |
 | `models/blog.py` | SQLite 연결, 테이블 생성, CRUD 쿼리 |
-| `routers/categories.py` | 카테고리 API |
 | `routers/posts.py` | 게시글 API |
 
 ---
-## 3. SQLite를 사용하는 이유
+## 3. RDB를 최소한으로 이해하기
+
+---
+### 테이블
+
+테이블은 같은 모양의 데이터를 모아 두는 곳입니다.
+
+이번 장에서는 `posts` 테이블 하나만 사용합니다.
+
+---
+### 행과 컬럼
+
+| 용어 | 의미 | 이번 예제 |
+|------|------|-----------|
+| 테이블 | 데이터를 담는 표 | `posts` |
+| 행 | 실제 데이터 한 건 | 게시글 1개 |
+| 컬럼 | 데이터의 속성 | `title`, `content` |
+| 기본 키 | 행을 구분하는 번호 | `id` |
+
+---
+## 4. SQLite를 사용하는 이유
 
 ---
 ### 인메모리 저장소의 한계
@@ -94,7 +126,7 @@ class TodoDB:
 
 - 구현이 쉽습니다.
 - 하지만 서버를 재시작하면 데이터가 모두 사라집니다.
-- 여러 테이블의 관계를 연습하기 어렵습니다.
+- 실제 서비스에서 쓰는 DB 흐름을 연습하기 어렵습니다.
 
 ---
 ### SQLite로 바꾸면
@@ -105,56 +137,48 @@ DB_PATH = Path(__file__).resolve().parents[1] / "blog.db"
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 ```
 
 - 별도 DB 서버 없이 파일 하나로 동작합니다.
 - Python 표준 라이브러리라 추가 DB 패키지가 필요 없습니다.
-- SQL과 테이블 관계를 가볍게 연습할 수 있습니다.
+- SQL의 기본 흐름을 가볍게 연습할 수 있습니다.
 
 ---
-## 4. 테이블 설계
-
----
-### categories
-
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| `id` | INTEGER | 기본 키 |
-| `name` | TEXT | 카테고리 이름, 중복 불가 |
-| `description` | TEXT | 카테고리 설명 |
-| `created_at` | TEXT | 생성 시각 |
+## 5. 테이블 설계
 
 ---
 ### posts
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
-| `id` | INTEGER | 기본 키 |
+| `id` | INTEGER | 게시글 번호, 기본 키 |
 | `title` | TEXT | 게시글 제목 |
 | `content` | TEXT | 게시글 본문 |
 | `summary` | TEXT | 게시글 요약 |
 | `published` | INTEGER | 공개 여부, `0` 또는 `1` |
-| `category_id` | INTEGER | 카테고리 외래 키 |
 | `created_at` | TEXT | 생성 시각 |
 | `updated_at` | TEXT | 수정 시각 |
 
 ---
-### 외래 키
+### CREATE TABLE
 
 ```sql
-FOREIGN KEY (category_id)
-    REFERENCES categories(id)
-    ON DELETE SET NULL
+CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    summary TEXT,
+    published INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 ```
 
-카테고리를 삭제해도 게시글 자체는 삭제하지 않습니다.
-
-대신 게시글의 `category_id`가 `null`로 바뀝니다.
+`IF NOT EXISTS`를 사용하면 서버를 여러 번 실행해도 기존 테이블을 덮어쓰지 않습니다.
 
 ---
-## 5. DB 초기화
+## 6. DB 초기화
 
 `main.py`에서 앱이 만들어질 때 `init_db()`를 먼저 실행합니다.
 
@@ -162,14 +186,12 @@ FOREIGN KEY (category_id)
 from fastapi import FastAPI
 
 from models.blog import init_db
-from routers.categories import router as category_router
 from routers.posts import router as post_router
 
 init_db()
 
 app = FastAPI(title="SQLite Blog API")
 
-app.include_router(category_router)
 app.include_router(post_router)
 ```
 
@@ -181,17 +203,16 @@ def init_db() -> None:
     with closing(_connect()) as conn:
         conn.executescript(
             """
-            CREATE TABLE IF NOT EXISTS categories (...);
             CREATE TABLE IF NOT EXISTS posts (...);
             """
         )
         conn.commit()
 ```
 
-`IF NOT EXISTS`를 사용하면 서버를 여러 번 실행해도 기존 테이블을 덮어쓰지 않습니다.
+서버를 실행하면 같은 폴더에 `blog.db` 파일이 자동으로 생성됩니다.
 
 ---
-## 6. Pydantic 스키마
+## 7. Pydantic 스키마
 
 ---
 ### 생성 스키마
@@ -202,7 +223,6 @@ class PostCreate(BaseModel):
     content: str = Field(..., min_length=1)
     summary: str | None = Field(default=None, max_length=500)
     published: bool = Field(default=False)
-    category_id: int | None = Field(default=None)
 ```
 
 클라이언트가 게시글을 만들 때 보내는 값만 정의합니다.
@@ -216,7 +236,6 @@ class PostUpdate(BaseModel):
     content: str | None = Field(default=None, min_length=1)
     summary: str | None = Field(default=None, max_length=500)
     published: bool | None = None
-    category_id: int | None = None
 ```
 
 PATCH 요청에서는 모든 필드를 선택 사항으로 둡니다.
@@ -231,7 +250,6 @@ class PostResponse(BaseModel):
     content: str
     summary: str | None
     published: bool
-    category_id: int | None
     created_at: datetime
     updated_at: datetime
 ```
@@ -239,7 +257,7 @@ class PostResponse(BaseModel):
 서버가 만들어 주는 `id`, `created_at`, `updated_at`은 응답 스키마에 포함합니다.
 
 ---
-## 7. SQLite CRUD 패턴
+## 8. SQLite CRUD 패턴
 
 ---
 ### CREATE
@@ -248,10 +266,9 @@ class PostResponse(BaseModel):
 cursor = conn.execute(
     """
     INSERT INTO posts (
-        title, content, summary, published,
-        category_id, created_at, updated_at
+        title, content, summary, published, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
     """,
     (...),
 )
@@ -278,7 +295,7 @@ row = conn.execute(
 ```python
 payload = data.model_dump(exclude_unset=True)
 
-for field in ("title", "content", "summary", "published", "category_id"):
+for field in ("title", "content", "summary", "published"):
     if field in payload:
         fields.append(f"{field} = ?")
         values.append(payload[field])
@@ -298,13 +315,12 @@ return cursor.rowcount > 0
 `rowcount`가 `0`이면 삭제할 대상이 없었다는 뜻입니다.
 
 ---
-## 8. 게시글 목록 조회
+## 9. 게시글 목록 조회
 
 ```python
 def list_posts(
     skip: int = 0,
     limit: int = 10,
-    category_id: int | None = None,
     published_only: bool = False,
     search: str | None = None,
 ):
@@ -318,7 +334,6 @@ def list_posts(
 |----------|------|
 | `skip` | 앞에서 건너뛸 게시글 수 |
 | `limit` | 가져올 게시글 수 |
-| `category_id` | 특정 카테고리 게시글만 조회 |
 | `published_only` | 공개 게시글만 조회 |
 | `search` | 제목 또는 본문 키워드 검색 |
 
@@ -327,15 +342,18 @@ def list_posts(
 
 ```json
 {
-  "total": 3,
+  "total": 1,
   "skip": 0,
   "limit": 10,
   "items": [
     {
       "id": 1,
       "title": "FastAPI와 SQLite로 CRUD 만들기",
+      "content": "sqlite3 표준 라이브러리로 게시글을 저장합니다.",
+      "summary": "SQLite 기반 CRUD 실습",
       "published": false,
-      "category_id": 1
+      "created_at": "2026-06-28T09:00:00+00:00",
+      "updated_at": "2026-06-28T09:00:00+00:00"
     }
   ]
 }
@@ -344,37 +362,32 @@ def list_posts(
 목록 API는 실제 게시글 배열뿐 아니라 전체 개수와 페이지 정보도 함께 반환합니다.
 
 ---
-## 9. 라우터 구현
+## 10. 라우터 구현
 
 ---
-### 카테고리 라우터
-
-```python
-router = APIRouter(
-    prefix="/categories",
-    tags=["categories"],
-)
-
-@router.post("", response_model=schemas.CategoryResponse, status_code=201)
-def create_category(category: schemas.CategoryCreate):
-    if blog_db.get_category_by_name(category.name):
-        raise HTTPException(status_code=409, detail="이미 존재하는 카테고리 이름입니다")
-    return blog_db.create_category(category)
-```
-
-중복 이름은 `409 Conflict`로 응답합니다.
-
----
-### 게시글 라우터
+### 게시글 생성
 
 ```python
 @router.post("", response_model=schemas.PostResponse, status_code=201)
 def create_post(post: schemas.PostCreate):
-    _validate_category(post.category_id)
     return blog_db.create_post(post)
 ```
 
-존재하지 않는 카테고리 ID로 게시글을 만들면 `400 Bad Request`로 응답합니다.
+라우터는 HTTP 요청을 받고, 실제 DB 작업은 `models/blog.py`에 맡깁니다.
+
+---
+### 게시글 상세 조회
+
+```python
+@router.get("/{post_id}", response_model=schemas.PostResponse)
+def get_post(post_id: int):
+    post = blog_db.get_post(post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다")
+    return post
+```
+
+없는 게시글을 요청하면 `404 Not Found`로 응답합니다.
 
 ---
 ### 게시글 부분 수정
@@ -385,16 +398,13 @@ def update_post(post_id: int, post: schemas.PostUpdate):
     if not blog_db.get_post(post_id):
         raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다")
 
-    if "category_id" in post.model_fields_set:
-        _validate_category(post.category_id)
-
     return blog_db.update_post(post_id, post)
 ```
 
-`category_id`를 아예 보내지 않는 것과 `null`로 보내는 것은 다릅니다.
+수정할 게시글이 있는지 먼저 확인한 뒤 DB 업데이트를 실행합니다.
 
 ---
-## 10. 실행
+## 11. 실행
 
 ### 의존성 설치
 
@@ -421,10 +431,15 @@ Swagger UI:
 http://localhost:8001/docs
 ```
 
-서버를 실행하면 같은 폴더에 `blog.db` 파일이 자동으로 생성됩니다.
+---
+### 기존 DB 파일 주의
+
+이전 버전의 실습을 실행한 적이 있다면 `blog.db` 안에 예전 테이블이 남아 있을 수 있습니다.
+
+이번 장을 처음부터 다시 확인하려면 서버를 끄고 `blog.db`를 삭제한 뒤 다시 실행합니다.
 
 ---
-## 11. Swagger UI 실습
+## 12. Swagger UI 실습
 
 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 실행합니다.
 
@@ -437,20 +452,11 @@ http://localhost:8001/docs
 
 - `docs` 값이 `/docs`로 안내됩니다.
 - `database` 값이 `blog.db`입니다.
-- `categories`, `posts` 라우터가 `main.py`에 연결되어 있습니다.
+- `posts` 라우터만 `main.py`에 연결되어 있습니다.
 
 ---
-### 실습 2. 비어 있는 목록 조회
+### 실습 2. 비어 있는 게시글 목록 조회
 
-> `GET /categories`
-
-응답 예시:
-
-```json
-[]
-```
-
----
 > `GET /posts`
 
 응답 예시:
@@ -465,36 +471,7 @@ http://localhost:8001/docs
 ```
 
 ---
-### 실습 3. 카테고리 생성
-
-> `POST /categories`
-
-```json
-{
-  "name": "기술",
-  "description": "FastAPI, Python, 데이터베이스 관련 글"
-}
-```
-
-확인할 것
-
-- 응답 상태 코드가 `201 Created`입니다.
-- 요청에는 없던 `id`, `created_at`이 응답에 포함됩니다.
-
----
-### 실습 4. 중복 카테고리 확인
-
-> `POST /categories`
-
-같은 Body를 한 번 더 실행합니다.
-
-확인할 것
-
-- 응답 상태 코드가 `409 Conflict`입니다.
-- `detail` 값이 `"이미 존재하는 카테고리 이름입니다"`입니다.
-
----
-### 실습 5. 게시글 생성
+### 실습 3. 게시글 생성
 
 > `POST /posts`
 
@@ -502,19 +479,18 @@ http://localhost:8001/docs
 {
   "title": "FastAPI와 SQLite로 CRUD 만들기",
   "content": "sqlite3 표준 라이브러리로 게시글을 저장합니다.",
-  "summary": "SQLite 기반 CRUD 실습",
-  "category_id": 1
+  "summary": "SQLite 기반 CRUD 실습"
 }
 ```
 
 확인할 것
 
 - 응답 상태 코드가 `201 Created`입니다.
+- 요청에는 없던 `id`, `created_at`, `updated_at`이 응답에 포함됩니다.
 - `published`는 요청에서 생략했으므로 `false`입니다.
-- `category_id`는 `1`입니다.
 
 ---
-### 실습 6. 게시글 목록과 상세 조회
+### 실습 4. 게시글 목록과 상세 조회
 
 > `GET /posts`
 
@@ -536,7 +512,7 @@ http://localhost:8001/docs
 - 응답 구조는 `PostResponse`와 같습니다.
 
 ---
-### 실습 7. 게시글 공개
+### 실습 5. 게시글 공개
 
 > `POST /posts/{post_id}/publish`
 
@@ -550,7 +526,7 @@ http://localhost:8001/docs
 - `updated_at` 값이 갱신됩니다.
 
 ---
-### 실습 8. 공개 게시글만 조회
+### 실습 6. 공개 게시글만 조회
 
 > `GET /posts`
 
@@ -563,7 +539,7 @@ http://localhost:8001/docs
 - 공개된 게시글만 `items`에 들어옵니다.
 
 ---
-### 실습 9. 키워드 검색
+### 실습 7. 키워드 검색
 
 > `GET /posts`
 
@@ -576,7 +552,7 @@ http://localhost:8001/docs
 - 제목 또는 본문에 `SQLite`가 들어간 게시글만 조회됩니다.
 
 ---
-### 실습 10. 게시글 부분 수정
+### 실습 8. 게시글 부분 수정
 
 > `PATCH /posts/{post_id}`
 
@@ -593,27 +569,11 @@ http://localhost:8001/docs
 확인할 것
 
 - `summary`만 바뀝니다.
-- `title`, `content`, `published`, `category_id`는 유지됩니다.
+- `title`, `content`, `published`는 유지됩니다.
 - 이 동작은 `exclude_unset=True` 때문에 가능합니다.
 
 ---
-### 실습 11. 카테고리 연결 해제
-
-> `PATCH /posts/{post_id}`
-
-```json
-{
-  "category_id": null
-}
-```
-
-확인할 것
-
-- `category_id`가 `null`로 바뀝니다.
-- 필드를 생략한 것이 아니라 명시적으로 `null`을 보냈기 때문에 값이 비워집니다.
-
----
-### 실습 12. 존재하지 않는 게시글 조회
+### 실습 9. 존재하지 않는 게시글 조회
 
 > `GET /posts/{post_id}`
 
@@ -627,7 +587,7 @@ http://localhost:8001/docs
 - `detail` 값이 `"게시글을 찾을 수 없습니다"`입니다.
 
 ---
-### 실습 13. Body 검증 실패 확인
+### 실습 10. Body 검증 실패 확인
 
 > `POST /posts`
 
@@ -644,7 +604,7 @@ http://localhost:8001/docs
 - `title`, `content`가 `min_length=1` 검증을 통과하지 못합니다.
 
 ---
-### 실습 14. 게시글 삭제
+### 실습 11. 게시글 삭제
 
 > `DELETE /posts/{post_id}`
 
@@ -658,39 +618,31 @@ http://localhost:8001/docs
 - 다시 `GET /posts/1`을 실행하면 `404 Not Found`입니다.
 
 ---
-## 12. 추가 실습
+## 13. 추가 실습
 
 ---
-### 카테고리 삭제와 외래 키
+### 페이지네이션 확인
 
-1. 카테고리를 하나 더 만듭니다.
-2. 그 카테고리 ID로 게시글을 만듭니다.
-3. `DELETE /categories/{category_id}`를 실행합니다.
-4. 게시글 상세를 다시 조회합니다.
+1. 게시글을 3개 만듭니다.
+2. `GET /posts`를 실행합니다.
+3. `skip=1`, `limit=1`을 입력하고 다시 실행합니다.
 
 확인할 것
 
-- 게시글은 삭제되지 않습니다.
-- `category_id`만 `null`로 바뀝니다.
-- 이 동작은 `ON DELETE SET NULL`로 정의했습니다.
+- `total`은 전체 게시글 수입니다.
+- `items`에는 조건에 맞는 일부 게시글만 들어옵니다.
 
 ---
-### 존재하지 않는 카테고리로 게시글 생성
+### 공개 글과 비공개 글 비교
 
-> `POST /posts`
-
-```json
-{
-  "title": "잘못된 카테고리 테스트",
-  "content": "존재하지 않는 카테고리 ID를 사용합니다.",
-  "category_id": 999
-}
-```
+1. 게시글을 하나 더 만듭니다.
+2. 하나는 `POST /posts/{post_id}/publish`로 공개합니다.
+3. `published_only=true`로 목록을 조회합니다.
 
 확인할 것
 
-- 응답 상태 코드가 `400 Bad Request`입니다.
-- `detail` 값이 `"존재하지 않는 카테고리입니다"`입니다.
+- 공개된 게시글만 목록에 표시됩니다.
+- 비공개 게시글은 삭제된 것이 아니라 필터에서 제외된 것입니다.
 
 ---
 ## 핵심 패턴 정리
@@ -699,9 +651,9 @@ http://localhost:8001/docs
 |------|-----------|
 | DB 연결 | `sqlite3.connect(DB_PATH)` |
 | dict 형태 조회 | `conn.row_factory = sqlite3.Row` |
-| 외래 키 활성화 | `PRAGMA foreign_keys = ON` |
+| 테이블 생성 | `CREATE TABLE IF NOT EXISTS posts` |
+| 값 전달 | `VALUES (?, ?, ?, ?, ?, ?)` |
 | 단건 없음 | `if not post: raise HTTPException(404, ...)` |
-| 중복 리소스 | `raise HTTPException(409, ...)` |
 | 부분 수정 | `model_dump(exclude_unset=True)` |
 | 공개 필터 | `published_only=true` |
 | 페이지네이션 | `LIMIT ? OFFSET ?` |
@@ -709,12 +661,11 @@ http://localhost:8001/docs
 ---
 ## 다음 장으로 연결
 
-이번 장에서는 SQLite와 SQL을 직접 다루었습니다.
+이번 장에서는 `posts` 테이블 하나로 SQLite와 CRUD 흐름을 익혔습니다.
 
-다음 단계에서는 같은 블로그 API를 더 큰 서비스에 맞게 나눕니다.
+다음 단계에서는 같은 블로그 API를 더 큰 서비스에 맞게 확장할 수 있습니다.
 
+- 테이블 관계: 여러 데이터를 나누어 저장하고 연결하기
 - Repository: DB 쿼리 담당
 - Service: 비즈니스 규칙 담당
-- Router: HTTP 요청/응답 담당
 - SQLAlchemy: SQL을 Python 객체 모델로 다루는 ORM
-
