@@ -12,28 +12,6 @@ paginate: true
 # SQLite 게시글 CRUD 서비스 구현
 
 ---
-## 학습 목표
-
-- 인메모리 저장소 대신 SQLite 파일 DB에 데이터를 저장한다.
-- `posts` 테이블 하나로 `CREATE`, `READ`, `UPDATE`, `DELETE` 흐름을 구현한다.
-- `APIRouter`, `schemas`, `models` 구조를 실제 DB 예제에 적용한다.
-- Swagger UI에서 정상 응답, `404`, `422` 응답을 직접 확인한다.
-
----
-## 이번 장의 원칙
-
-학생들이 RDB를 처음 접한다고 가정합니다.
-
-따라서 이번 장에서는 테이블 관계를 다루지 않습니다.
-
-| 이번 장에서 다루는 것 | 다음 단계에서 다룰 것 |
-|----------------------|----------------------|
-| 테이블 하나 | 여러 테이블 |
-| 게시글 CRUD | 데이터 사이의 관계 |
-| 기본 SQL | 테이블 연결, 조인, 트랜잭션 |
-| sqlite3 표준 라이브러리 | ORM 또는 Repository 계층 |
-
----
 ## 핵심 요약
 
 | 개념 | 설명 |
@@ -48,16 +26,8 @@ paginate: true
 ---
 ## 1. 이전 장과 연결
 
-`04_프로젝트구조화`에서는 Todo API를 파일별로 나누었습니다.
-
-```text
-main.py
-routers/todo.py
-schemas/todo.py
-models/todo.py
-```
-
-이번 장에서는 같은 구조를 유지하되 저장소만 바꿉니다.
+- `04_프로젝트구조화`에서는 Todo API를 파일별로 나누었습니다.
+- 이번 장에서는 같은 구조를 유지하되 저장소만 바꿉니다.
 
 | 이전 장 | 이번 장 |
 |--------|---------|
@@ -67,23 +37,7 @@ models/todo.py
 | Python dict 조작 | SQL로 행 생성/조회/수정/삭제 |
 
 ---
-## 2. 프로젝트 구조
-
-```text
-05_CRUD_서비스구현/
-├── main.py
-├── models/
-│   └── blog.py
-├── routers/
-│   └── posts.py
-├── schemas/
-│   └── blog.py
-├── pyproject.toml
-└── requirements.txt
-```
-
----
-### 파일 역할
+## 2. 파일 역할
 
 | 파일 | 역할 |
 |------|------|
@@ -93,30 +47,38 @@ models/todo.py
 | `routers/posts.py` | 게시글 API |
 
 ---
-## 3. RDB를 최소한으로 이해하기
+## 3. RDB(Relational Database)를 최소한으로 이해하기
+> 데이터를 테이블 형태로 저장하고, 테이블 간의 관계(Relation)를 관리하는 데이터베이스
 
 ---
-### 테이블
+### RDB 특징 
 
-테이블은 같은 모양의 데이터를 모아 두는 곳입니다.
-
-이번 장에서는 `posts` 테이블 하나만 사용합니다.
+| 특징           | 설명                                              |
+| ------------ | ----------------------------------------------- |
+| 테이블 기반       | 데이터를 행(Row)과 열(Column) 형태로 저장                   |
+| 관계(Relation) | 여러 테이블을 연결하여 관리                                 |
+| SQL 사용       | `SELECT`, `INSERT`, `UPDATE`, `DELETE` 등 SQL 사용 |
+| 데이터 무결성      | 기본키(PK), 외래키(FK), 제약조건으로 데이터의 일관성 유지            |
+| 트랜잭션 지원      | 여러 작업을 하나의 작업처럼 안전하게 처리(ACID)                   |
 
 ---
-### 행과 컬럼
+### RDBMS 종류 
+> RDB는 데이터베이스의 개념이고, `RDBMS(Relational Database Management System)`는 RDB를 생성·관리하는 소프트웨어
 
-| 용어 | 의미 | 이번 예제 |
-|------|------|-----------|
-| 테이블 | 데이터를 담는 표 | `posts` |
-| 행 | 실제 데이터 한 건 | 게시글 1개 |
-| 컬럼 | 데이터의 속성 | `title`, `content` |
-| 기본 키 | 행을 구분하는 번호 | `id` |
+| 제품                   | 특징                      |
+| -------------------- | ----------------------- |
+| SQLite               | 파일 기반, 학습 및 소규모 프로젝트    |
+| MySQL                | 가장 널리 사용되는 오픈소스 RDBMS   |
+| PostgreSQL           | 기능이 풍부하고 표준 SQL 지원이 뛰어남 |
+| Oracle Database      | 대규모 기업용 RDBMS           |
+| Microsoft SQL Server | Microsoft의 기업용 RDBMS    |
 
 ---
 ## 4. SQLite를 사용하는 이유
+> SQLite는 서버 설치 없이 파일 하나에 데이터를 저장하는 `가벼운 관계형 데이터베이스(RDB)` 입니다.
 
 ---
-### 인메모리 저장소의 한계
+### 인메모리(In-Memory) 저장소의 한계
 
 ```python
 class TodoDB:
@@ -145,7 +107,27 @@ def _connect() -> sqlite3.Connection:
 - SQL의 기본 흐름을 가볍게 연습할 수 있습니다.
 
 ---
+### 인메모리(In-Memory) vs SQLite
+
+| 항목     | 인메모리(In-Memory) | SQLite            |
+| ------ | --------------- | ----------------- |
+| 저장 위치  | RAM(메모리)        | 디스크(DB 파일)        |
+| 데이터 유지 | 프로그램 종료 시 사라짐 | 프로그램 종료 후에도 유지  |
+| 속도     | 매우 빠름           | 빠르지만 메모리보다 느림     |
+| 서버 설치  | 필요 없음           | 필요 없음             |
+| SQL 지원 | 보통 지원하지 않음      | 지원              |
+| 용도     | 임시 데이터, 테스트     | 로컬 데이터 저장, 학습용 DB |
+
+---
 ## 5. 테이블 설계
+> 테이블(Table) 이란 같은 종류의 데이터를 행(Row)과 열(Column) 형태로 저장하는 객체입니다.
+
+| 용어 | 의미 | 이번 예제 |
+|------|------|-----------|
+| 테이블(Table) | 데이터를 담는 표 | `posts` |
+| 행(Row) | 실제 데이터 한 건 | 게시글 1개 |
+| 열(Column) | 데이터의 속성 | `title`, `content` |
+| 기본 키 | 행(Row)을 구분하는 번호 | `id` |
 
 ---
 ### posts
@@ -275,7 +257,13 @@ cursor = conn.execute(
 conn.commit()
 ```
 
-`?` 자리에 값을 따로 전달하면 SQL Injection 위험을 줄일 수 있습니다.
+`?` 자리에 값을 따로 전달하면 `SQL Injection 위험`을 줄일 수 있습니다.
+
+---
+### SQL Injection이란?
+`SQL Injection`은 사용자의 입력값을 검증하지 않고 SQL 문에 그대로 포함했을 때, 악의적인 SQL이 함께 실행되는 보안 취약점입니다.
+
+> 즉, 공격자가 입력값에 SQL 코드를 삽입(Injection)하여 데이터 조회, 수정, 삭제 또는 관리자 권한 획득 등을 시도하는 공격입니다.
 
 ---
 ### READ
@@ -406,17 +394,19 @@ def update_post(post_id: int, post: schemas.PostUpdate):
 ---
 ## 11. 실행
 
-### 의존성 설치
+---
+### SQLite3 Editor 설치
+![alt text](./img/image-3.png)
 
+---
+### 가상환경 생성
 ```bash
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
 uv sync
 ```
 
-또는
-
-```bash
-pip install -r requirements.txt
-```
+### 기존 DB 파일 주의
+- 만약 `blog.db` 파일이 존재한다면, 서버 실행 전 파일 삭제
 
 ---
 ### 서버 실행
@@ -425,56 +415,41 @@ pip install -r requirements.txt
 python -m uvicorn main:app --reload --port 8001
 ```
 
-Swagger UI:
+> SQLite RDB 생성됨
 
-```text
-http://localhost:8001/docs
-```
+![alt text](./img/image-2.png)
 
 ---
-### 기존 DB 파일 주의
-
-이전 버전의 실습을 실행한 적이 있다면 `blog.db` 안에 예전 테이블이 남아 있을 수 있습니다.
-
-이번 장을 처음부터 다시 확인하려면 서버를 끄고 `blog.db`를 삭제한 뒤 다시 실행합니다.
-
----
-## 12. Swagger UI 실습
-
-각 API에서 **Try it out**을 누른 뒤 아래 순서대로 실행합니다.
+## 12. Swagger UI 실습 (http://localhost:8001/docs)
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
 
 ---
 ### 실습 1. 루트 엔드포인트 확인
-
 > `GET /`
 
-확인할 것
+![alt text](./img/image.png)
 
+---
+확인할 것
 - `docs` 값이 `/docs`로 안내됩니다.
 - `database` 값이 `blog.db`입니다.
 - `posts` 라우터만 `main.py`에 연결되어 있습니다.
 
+![alt text](./img/image-1.png)
+
 ---
 ### 실습 2. 비어 있는 게시글 목록 조회
-
 > `GET /posts`
 
-응답 예시:
+![alt text](./img/image-4.png)
 
-```json
-{
-  "total": 0,
-  "skip": 0,
-  "limit": 10,
-  "items": []
-}
-```
+---
+![alt text](./img/image-5.png)
 
 ---
 ### 실습 3. 게시글 생성
 
 > `POST /posts`
-
 ```json
 {
   "title": "FastAPI와 SQLite로 CRUD 만들기",
@@ -483,36 +458,49 @@ http://localhost:8001/docs
 }
 ```
 
-확인할 것
+---
+![alt text](./img/image-6.png)
 
+---
+확인할 것
 - 응답 상태 코드가 `201 Created`입니다.
 - 요청에는 없던 `id`, `created_at`, `updated_at`이 응답에 포함됩니다.
 - `published`는 요청에서 생략했으므로 `false`입니다.
 
----
-### 실습 4. 게시글 목록과 상세 조회
+![alt text](./img/image-7.png)
 
+---
+### 실습 4. 게시글 목록
 > `GET /posts`
 
-확인할 것
+![alt text](./img/image-8.png)
 
+---
+확인할 것
 - `total`이 `1`입니다.
 - `items` 배열에 방금 만든 게시글이 들어 있습니다.
 
+![alt text](./img/image-9.png)
+
 ---
+### 실습 5. 게시글 상세 조회 
 > `GET /posts/{post_id}`
 
 | Path Parameter | 입력값 |
 |----------------|--------|
 | `post_id` | `1` |
 
-확인할 것
+![alt text](./img/image-10.png)
 
+---
+확인할 것
 - 응답 상태 코드가 `200 OK`입니다.
 - 응답 구조는 `PostResponse`와 같습니다.
 
+![alt text](./img/image-11.png)
+
 ---
-### 실습 5. 게시글 공개
+### 실습 6. 게시글 공개
 
 > `POST /posts/{post_id}/publish`
 
@@ -520,13 +508,17 @@ http://localhost:8001/docs
 |----------------|--------|
 | `post_id` | `1` |
 
-확인할 것
+![alt text](./img/image-12.png)
 
+---
+확인할 것
 - `published`가 `true`로 바뀝니다.
 - `updated_at` 값이 갱신됩니다.
 
+![alt text](./img/image-13.png)
+
 ---
-### 실습 6. 공개 게시글만 조회
+### 실습 7. 공개 게시글만 조회
 
 > `GET /posts`
 
@@ -534,12 +526,17 @@ http://localhost:8001/docs
 |-----------------|--------|
 | `published_only` | `true` |
 
-확인할 것
-
-- 공개된 게시글만 `items`에 들어옵니다.
+---
+![alt text](./img/image-14.png)
 
 ---
-### 실습 7. 키워드 검색
+확인할 것
+- 공개된 게시글만 `items`에 들어옵니다.
+
+![alt text](./img/image-15.png)
+
+---
+### 실습 8. 키워드 검색
 
 > `GET /posts`
 
@@ -547,12 +544,17 @@ http://localhost:8001/docs
 |-----------------|--------|
 | `search` | `SQLite` |
 
-확인할 것
-
-- 제목 또는 본문에 `SQLite`가 들어간 게시글만 조회됩니다.
+---
+![alt text](./img/image-16.png)
 
 ---
-### 실습 8. 게시글 부분 수정
+확인할 것
+- 제목 또는 본문에 `SQLite`가 들어간 게시글만 조회됩니다.
+
+![alt text](./img/image-17.png)
+
+---
+### 실습 9. 게시글 부분 수정
 
 > `PATCH /posts/{post_id}`
 
@@ -565,15 +567,19 @@ http://localhost:8001/docs
   "summary": "PATCH로 요약만 수정했습니다."
 }
 ```
+---
+![alt text](./img/image-18.png)
 
+---
 확인할 것
-
 - `summary`만 바뀝니다.
 - `title`, `content`, `published`는 유지됩니다.
 - 이 동작은 `exclude_unset=True` 때문에 가능합니다.
 
+![alt text](./img/image-19.png)
+
 ---
-### 실습 9. 존재하지 않는 게시글 조회
+### 실습 10. 존재하지 않는 게시글 조회
 
 > `GET /posts/{post_id}`
 
@@ -581,13 +587,17 @@ http://localhost:8001/docs
 |----------------|--------|
 | `post_id` | `999` |
 
-확인할 것
+![alt text](./img/image-20.png)
 
+---
+확인할 것
 - 응답 상태 코드가 `404 Not Found`입니다.
 - `detail` 값이 `"게시글을 찾을 수 없습니다"`입니다.
 
+![alt text](./img/image-21.png)
+
 ---
-### 실습 10. Body 검증 실패 확인
+### 실습 11. Body 검증 실패 확인
 
 > `POST /posts`
 
@@ -597,14 +607,18 @@ http://localhost:8001/docs
   "content": ""
 }
 ```
+---
+![alt text](./img/image-22.png)
 
+---
 확인할 것
-
 - 응답 상태 코드가 `422 Unprocessable Entity`입니다.
 - `title`, `content`가 `min_length=1` 검증을 통과하지 못합니다.
 
+![alt text](./img/image-23.png)
+
 ---
-### 실습 11. 게시글 삭제
+### 실습 12. 게시글 삭제
 
 > `DELETE /posts/{post_id}`
 
@@ -612,37 +626,20 @@ http://localhost:8001/docs
 |----------------|--------|
 | `post_id` | `1` |
 
-확인할 것
+![alt text](./img/image-24.png)
 
+---
+확인할 것
 - 응답 상태 코드가 `204 No Content`입니다.
+
+![alt text](./img/image-25.png)
+
+---
 - 다시 `GET /posts/1`을 실행하면 `404 Not Found`입니다.
 
----
-## 13. 추가 실습
+![alt text](./img/image-26.png)
 
----
-### 페이지네이션 확인
-
-1. 게시글을 3개 만듭니다.
-2. `GET /posts`를 실행합니다.
-3. `skip=1`, `limit=1`을 입력하고 다시 실행합니다.
-
-확인할 것
-
-- `total`은 전체 게시글 수입니다.
-- `items`에는 조건에 맞는 일부 게시글만 들어옵니다.
-
----
-### 공개 글과 비공개 글 비교
-
-1. 게시글을 하나 더 만듭니다.
-2. 하나는 `POST /posts/{post_id}/publish`로 공개합니다.
-3. `published_only=true`로 목록을 조회합니다.
-
-확인할 것
-
-- 공개된 게시글만 목록에 표시됩니다.
-- 비공개 게시글은 삭제된 것이 아니라 필터에서 제외된 것입니다.
+![alt text](./img/image-27.png)
 
 ---
 ## 핵심 패턴 정리
@@ -657,15 +654,3 @@ http://localhost:8001/docs
 | 부분 수정 | `model_dump(exclude_unset=True)` |
 | 공개 필터 | `published_only=true` |
 | 페이지네이션 | `LIMIT ? OFFSET ?` |
-
----
-## 다음 장으로 연결
-
-이번 장에서는 `posts` 테이블 하나로 SQLite와 CRUD 흐름을 익혔습니다.
-
-다음 단계에서는 같은 블로그 API를 더 큰 서비스에 맞게 확장할 수 있습니다.
-
-- 테이블 관계: 여러 데이터를 나누어 저장하고 연결하기
-- Repository: DB 쿼리 담당
-- Service: 비즈니스 규칙 담당
-- SQLAlchemy: SQL을 Python 객체 모델로 다루는 ORM
