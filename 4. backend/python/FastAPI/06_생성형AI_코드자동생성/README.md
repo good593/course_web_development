@@ -58,20 +58,20 @@ Ollama + gemma4
 
 1. [ollama.com](https://ollama.com/download)에서 Ollama를 설치합니다.
 
-![alt text](image.png)
+![alt text](./img/image.png)
 
 ---
 2. 터미널에서 Ollama가 동작하는지 확인합니다.
 ```bash
 ollama --version
 ```
-![alt text](image-1.png)
+![alt text](./img/image-1.png)
 
 ---
 ### [gemma4 모델 내려받기](https://ollama.com/library/gemma4)
 > `gemma4:e4b`는 텍스트와 이미지 입력을 지원하는 Ollama 모델입니다. 기본 모델 외에도 `gemma4:e2b`, `gemma4:12b`, `gemma4:26b`, `gemma4:31b` 같은 변형을 선택할 수 있습니다.
 
-![alt text](image-2.png)
+![alt text](./img/image-2.png)
 
 ---
 | 모델 | 용도 | 특징 |
@@ -92,14 +92,14 @@ ollama pull gemma4:e4b
 ```bash
 ollama list
 ```
-![alt text](image-3.png)
+![alt text](./img/image-3.png)
 
 ---
 > 다운로드된 모델 실행
 ```bash
 ollama run gemma4:e4b
 ```
-![alt text](image-4.png)
+![alt text](./img/image-4.png)
 
 ---
 ## 3. 기본 API 호출
@@ -328,27 +328,16 @@ python -m uvicorn main:app --reload --port 8001
 ### Swagger UI 실습 (http://localhost:8001/docs)
 > 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
 
-> `POST /generate` 실습은 Ollama가 실행 중이고 `gemma4:e4b` 모델이 내려받아져 있어야 정상 응답을 받을 수 있습니다.
-
 ---
 #### 실습 1. 루트 엔드포인트 확인
 > `GET /`
 
-Swagger UI에서 `GET /`를 펼친 뒤 **Try it out** → **Execute**를 누릅니다.
+![alt text](./img/image-5.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `200 OK`입니다.
 - 서버가 사용하는 모델 이름과 Swagger 문서 경로를 확인합니다.
-
-```json
-{
-    "status": "ok",
-    "model": "gemma4:e4b",
-    "docs": "/docs"
-}
-```
-
 ```python
 @router.get("/")
 def read_root() -> dict[str, str]:
@@ -361,30 +350,28 @@ def read_root() -> dict[str, str]:
 ```
 
 ---
+![alt text](./img/image-6.png)
+
+---
 #### 실습 2. 간단한 FastAPI 코드 생성
 > `POST /generate`
 
 ```json
 {
-    "requirements": "FastAPI와 Pydantic v2를 사용해서 메모 앱 API를 만들어줘. POST /memos, GET /memos, GET /memos/{memo_id}, DELETE /memos/{memo_id}를 구현하고 인메모리 dict를 사용해줘.",
+    "requirements": "FastAPI와 Pydantic v2를 사용해서 메모 앱 API를 만들어줘.\nPOST /memos, GET /memos, GET /memos/{memo_id}, DELETE /memos/{memo_id}를 구현하고 인메모리 dict를 사용해줘.",
     "thinking": false,
     "num_predict": 1024
 }
 ```
 
 ---
+![alt text](./img/image-7.png)
+
+---
 확인할 것
 - 응답 상태 코드가 `200 OK`입니다.
 - 응답에는 `model`과 `content`만 들어옵니다.
 - `content` 안에 FastAPI 코드 초안이 문자열로 들어옵니다.
-
-```json
-{
-    "model": "gemma4:e4b",
-    "content": "```python\n...\n```"
-}
-```
-
 ```python
 class GenerateCodeResponse(BaseModel):
     """API 코드 생성 결과 응답 스키마입니다."""
@@ -394,49 +381,27 @@ class GenerateCodeResponse(BaseModel):
 ```
 
 ---
-#### 실습 3. 더 구체적인 요구사항으로 코드 생성
-> `POST /generate`
-
-이번에는 검증 조건과 상태 코드를 더 자세히 적어 봅니다.
-
-```json
-{
-    "requirements": "상품 관리 API를 만들어줘. Product는 id, name, price, stock, category를 가진다. POST /products는 상품을 생성하고 이름 중복은 409로 거절한다. GET /products는 전체 목록을 반환한다. GET /products/{product_id}는 없으면 404를 반환한다. PATCH /products/{product_id}는 보낸 필드만 수정한다. DELETE /products/{product_id}는 삭제 성공 메시지를 반환한다.",
-    "thinking": false,
-    "num_predict": 2048
-}
-```
+![alt text](./img/image-8.png)
 
 ---
-확인할 것
-- 프롬프트가 구체적일수록 생성된 코드에 `HTTPException`, `Field`, `response_model` 같은 구현 조건이 더 잘 반영됩니다.
-- `num_predict` 값을 늘리면 더 긴 코드가 생성될 수 있지만 응답 시간도 길어질 수 있습니다.
-
-```python
-content = generate_api_code(
-    request.requirements,
-    thinking=request.thinking,
-    num_predict=request.num_predict,
-)
-```
-
----
-#### 실습 4. thinking 모드로 코드 생성
+#### 실습 3. thinking 모드로 코드 생성
 > `POST /generate`
 
 ```json
 {
-    "requirements": "사용자 등록과 로그인을 제공하는 FastAPI 예제를 만들어줘. 비밀번호는 응답에서 제외하고, 로그인 실패는 401로 처리해줘.",
+    "requirements": "사용자 등록과 로그인을 제공하는 FastAPI 예제를 만들어줘.\n비밀번호는 응답에서 제외하고, 로그인 실패는 401로 처리해줘.",
     "thinking": true,
     "num_predict": 2048
 }
 ```
 
 ---
+![alt text](./img/image-9.png)
+
+---
 확인할 것
 - `thinking`을 `true`로 보내면 서버가 system prompt 앞에 gemma4 thinking 토큰을 붙입니다.
 - 복잡한 설계 요청에서는 응답 시간이 더 길어질 수 있습니다.
-
 ```python
 def build_system_message(*, thinking: bool = False) -> dict[str, str]:
     """gemma4 thinking 모드를 켜려면 system prompt 앞에 전용 토큰을 붙입니다."""
@@ -445,74 +410,4 @@ def build_system_message(*, thinking: bool = False) -> dict[str, str]:
 ```
 
 ---
-#### 실습 5. requirements 검증 실패 확인
-> `POST /generate`
-
-`requirements`를 빈 문자열로 보내 봅니다.
-
-```json
-{
-    "requirements": "",
-    "thinking": false,
-    "num_predict": 512
-}
-```
-
----
-확인할 것
-- 응답 상태 코드가 `422 Unprocessable Entity`입니다.
-- `detail` 배열의 `loc`에서 `body`, `requirements`를 확인합니다.
-- `requirements`는 최소 1글자 이상이어야 합니다.
-
-```python
-class GenerateCodeRequest(BaseModel):
-    """API 코드 생성을 요청할 때 사용하는 입력 스키마입니다."""
-
-    requirements: str = Field(..., min_length=1, description="생성할 API 요구사항")
-    thinking: bool = Field(False, description="gemma4 thinking 모드 사용 여부")
-    num_predict: int = Field(8192, ge=128, le=32768, description="최대 생성 토큰 수")
-```
-
----
-#### 실습 6. num_predict 범위 검증 실패 확인
-> `POST /generate`
-
-`num_predict`를 허용 범위보다 작게 보내 봅니다.
-
-```json
-{
-    "requirements": "Hello World를 반환하는 FastAPI 엔드포인트를 만들어줘.",
-    "thinking": false,
-    "num_predict": 127
-}
-```
-
----
-확인할 것
-- 응답 상태 코드가 `422 Unprocessable Entity`입니다.
-- `detail` 배열의 `loc`에서 `body`, `num_predict`를 확인합니다.
-- `num_predict`는 `128` 이상 `32768` 이하만 허용됩니다.
-
-```python
-num_predict: int = Field(8192, ge=128, le=32768, description="최대 생성 토큰 수")
-```
-
----
-#### 실습 7. Ollama 모델 오류 확인
-> `POST /generate`
-
-Ollama 서버는 실행되어 있지만 `gemma4:e4b` 모델이 설치되어 있지 않으면 코드 생성 요청이 실패할 수 있습니다. 이 경우 실습 2의 요청 Body를 그대로 보내고 응답을 확인합니다.
-
----
-확인할 것
-- 응답 상태 코드가 `502 Bad Gateway`이면 FastAPI 서버는 켜져 있지만 Ollama 호출 단계에서 실패한 것입니다.
-- `detail` 메시지는 Ollama 실행 상태와 모델 설치 여부를 확인하라고 안내합니다.
-- 해결하려면 터미널에서 `ollama pull gemma4:e4b`를 먼저 실행합니다.
-
-```python
-except ResponseError as error:
-    raise HTTPException(
-        status_code=502,
-        detail="Ollama 호출에 실패했습니다. Ollama 실행 상태와 모델 설치 여부를 확인하세요.",
-    ) from error
-```
+![alt text](./img/image-10.png)
