@@ -5,7 +5,9 @@ ReasoningEffort = Literal["low", "medium", "high"]
 
 MODEL = "openai/gpt-oss-120b"
 OUTPUT_DIR = Path("output")
-DEFAULT_OPENAPI_URL = "http://localhost:8000/openapi.json"
+
+# README의 uvicorn 실행 포트와 DocumentGenerationRequest 기본값을 맞춥니다.
+DEFAULT_OPENAPI_URL = "http://localhost:8001"
 
 GROQ_TPM_SAFE_LIMIT = 7600
 DOCS_MAX_TOKENS = 3072

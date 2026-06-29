@@ -38,11 +38,17 @@ FastAPI 서버가 직접 다음 일을 처리합니다.
 | 파일 | 역할 |
 |---|---|
 | `main.py` | FastAPI 앱 생성 및 라우터 등록 |
+| `settings.py` | 모델, 출력 폴더, 기본 OpenAPI URL 설정 |
+| `core/metadata.py` | Swagger 제목, 설명, 태그 메타데이터 |
+| `core/security.py` | Swagger Authorize 버튼과 실습용 Bearer 토큰 |
+| `core/openapi.py` | OpenAPI 보안 스키마 커스터마이징 |
+| `schemas/*.py` | Swagger 요청/응답 본문과 예시 |
 | `routers/documents.py` | 생성형 AI 문서 자동화 API |
 | `services/document_workflow.py` | 문서 생성 흐름 조합 |
 | `services/document_generator.py` | Groq에 전달할 프롬프트 작성 |
 | `services/groq_client.py` | Groq 스트리밍 호출 |
 | `services/openapi_spec.py` | OpenAPI 스펙 수집 및 compact 처리 |
+| `services/storage.py` | 생성 결과와 스냅샷 파일 저장 |
 | `routers/products.py` | 문서화 대상 예제 API |
 | `routers/orders.py` | 문서화 대상 예제 API |
 | `routers/users.py` | 문서화 대상 예제 API |
@@ -70,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(orders_router)
     app.include_router(users_router)
     app.include_router(documents_router)
+    app.openapi = lambda: custom_openapi(app)
     return app
 ```
 
@@ -95,8 +102,8 @@ def create_app() -> FastAPI:
 | `GET` | `/products` | 상품 목록 조회 |
 | `POST` | `/products` | 상품 등록, 관리자 토큰 필요 |
 | `GET` | `/products/{product_id}` | 상품 단건 조회 |
-| `PATCH` | `/products/{product_id}` | 상품 부분 수정 |
-| `DELETE` | `/products/{product_id}` | 상품 삭제 |
+| `PATCH` | `/products/{product_id}` | 상품 부분 수정, 관리자 토큰 필요 |
+| `DELETE` | `/products/{product_id}` | 상품 삭제, 관리자 토큰 필요 |
 | `POST` | `/orders` | 주문 생성, 재고 차감 |
 | `GET` | `/orders/{order_id}` | 주문 조회 |
 | `POST` | `/users` | 회원 가입 |
@@ -299,7 +306,7 @@ def generate_api_document(request: DocumentGenerationRequest) -> dict:
 
 ```json
 {
-  "server_url": "http://localhost:8000"
+  "server_url": "http://localhost:8001"
 }
 ```
 
@@ -312,71 +319,215 @@ def generate_api_document(request: DocumentGenerationRequest) -> dict:
 ```
 
 ---
-## 실행 준비
+## 서버 실행 및 Swagger 실습
+
+---
+### 가상환경 생성
 
 ```bash
+# pyproject.toml과 uv.lock 기준으로 의존성 설치
 uv sync
-copy .env.example .env
 ```
 
-`.env` 파일에 Groq API 키를 입력합니다.
+AI 문서 생성 API까지 실행하려면 `.env` 파일에 Groq API 키를 넣습니다.
 
-```env
-GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxx
+```powershell
+Set-Content -Encoding UTF8 .env "GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxx"
 ```
+
+> Groq API 키가 없어도 `GET /health`, `/products`, `/orders`, `/users` 실습은 먼저 진행할 수 있습니다.
 
 ---
-## FastAPI 서버 실행
+### 서버 실행
 
 ```bash
-uv run python -m uvicorn main:app --reload --port 8000
-```
-
-브라우저에서 Swagger UI를 엽니다.
-
-```text
-http://localhost:8000/docs
+python -m uvicorn main:app --reload --port 8001
 ```
 
 ---
-## Swagger UI 실습 1: OpenAPI 확인
-
-1. `GET /health`를 실행해 서버가 동작하는지 확인합니다.
-2. `GET /products`를 실행해 예제 상품 목록을 확인합니다.
-3. 브라우저에서 `http://localhost:8000/openapi.json`을 열어 JSON 스펙을 확인합니다.
-4. `Products`, `Orders`, `Users`, `AI Documents` 태그가 보이는지 확인합니다.
+### Swagger UI 실습 (http://localhost:8001/docs)
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
 
 ---
-## Swagger UI 실습 2: 인증 확인
+#### 실습 1. 서버 상태와 OpenAPI 원본 확인
+> `GET /health`
 
-1. Swagger UI 오른쪽 위 `Authorize` 버튼을 누릅니다.
-2. 값에 `demo-admin-token`을 입력합니다.
-3. `POST /products`를 실행합니다.
-4. 토큰을 지운 뒤 다시 실행해 `401` 또는 `403` 응답을 확인합니다.
+확인할 것
+- 응답 상태 코드가 `200 OK`입니다.
+- 응답에 `status`, `version`, `timestamp`가 들어옵니다.
+- 브라우저에서 `http://localhost:8001/openapi.json`을 열면 JSON 스펙이 보입니다.
+- Swagger UI에 `Products`, `Orders`, `Users`, `AI Documents`, `Health` 태그가 보입니다.
 
 ---
-## Swagger UI 실습 3: API 문서 생성
+#### 실습 2. 상품 목록 조회와 Query Parameter 확인
+> `GET /products`
 
-`POST /ai-docs/api-docs`를 실행합니다.
+입력값:
 
-요청 본문:
+| 이름 | 값 |
+|---|---|
+| `category` | `전자제품` |
+| `page` | `1` |
+| `size` | `10` |
+
+확인할 것
+- 응답 상태 코드가 `200 OK`입니다.
+- 예제 상품인 `무선 마우스`, `기계식 키보드`가 조회됩니다.
+- `category`, `page`, `size` 설명이 Swagger UI에 표시됩니다.
+
+---
+#### 실습 3. 인증 실패 응답 확인
+> `POST /products`
+
+아직 Authorize를 누르지 않은 상태에서 실행합니다.
 
 ```json
 {
-  "server_url": "http://localhost:8000"
+    "name": "USB-C 허브",
+    "price": 42000,
+    "stock": 30,
+    "category": "전자제품"
 }
 ```
 
-실행 후 다음 파일을 확인합니다.
-
-```text
-output/API_DOCS.md
-```
+확인할 것
+- 응답 상태 코드가 `401 Unauthorized`입니다.
+- 응답 본문은 `{"detail": "인증이 필요합니다."}` 형태입니다.
 
 ---
-## Swagger UI 실습 4: 전체 문서 생성
+#### 실습 4. 관리자 토큰으로 상품 등록
+> `POST /products`
 
-`POST /ai-docs/generate-all`을 실행합니다.
+1. Swagger UI 오른쪽 위 `Authorize` 버튼을 누릅니다.
+2. 값에 `demo-admin-token`만 입력합니다.
+3. 다시 `POST /products`를 실행합니다.
+
+```json
+{
+    "name": "USB-C 허브",
+    "price": 42000,
+    "stock": 30,
+    "category": "전자제품"
+}
+```
+
+확인할 것
+- 응답 상태 코드가 `201 Created`입니다.
+- 응답에 새 상품 `id`가 들어옵니다.
+- 같은 본문을 한 번 더 보내면 `409 Conflict`가 발생합니다.
+
+---
+#### 실습 5. 요청 검증 오류 확인
+> `POST /products`
+
+```json
+{
+    "name": "A",
+    "price": 0,
+    "stock": -1,
+    "category": "전자제품"
+}
+```
+
+확인할 것
+- 응답 상태 코드가 `422 Unprocessable Entity`입니다.
+- `name`, `price`, `stock` 필드 검증 오류가 `detail` 목록으로 표시됩니다.
+
+---
+#### 실습 6. 상품 수정과 삭제
+> `PATCH /products/{product_id}`
+
+`product_id`에는 실습 4에서 생성된 상품 ID를 넣습니다.
+
+```json
+{
+    "price": 39900,
+    "stock": 25
+}
+```
+
+확인할 것
+- 응답 상태 코드가 `200 OK`입니다.
+- 전달한 필드만 변경됩니다.
+
+삭제도 같은 상품 ID로 확인합니다.
+
+> `DELETE /products/{product_id}`
+
+확인할 것
+- 응답 상태 코드가 `204 No Content`입니다.
+- 같은 ID를 다시 조회하면 `404 Not Found`가 발생합니다.
+
+---
+#### 실습 7. 주문 생성과 재고 차감 확인
+> `POST /orders`
+
+```json
+{
+    "items": [
+        {
+            "product_id": 1,
+            "quantity": 2
+        }
+    ]
+}
+```
+
+확인할 것
+- 응답 상태 코드가 `201 Created`입니다.
+- 응답에 `id`, `items`, `total_price`, `status`, `created_at`이 들어옵니다.
+- 다시 `GET /products/1`을 실행하면 재고가 줄어 있습니다.
+
+---
+#### 실습 8. 회원 가입과 내 정보 조회
+> `POST /users`
+
+```json
+{
+    "username": "hong123",
+    "email": "hong@example.com",
+    "password": "pass1234"
+}
+```
+
+확인할 것
+- 응답 상태 코드가 `201 Created`입니다.
+- 응답에는 `password`가 포함되지 않습니다.
+- 같은 이메일을 한 번 더 보내면 `409 Conflict`가 발생합니다.
+
+이어서 관리자 토큰이 들어간 상태로 실행합니다.
+
+> `GET /users/me`
+
+확인할 것
+- 응답 상태 코드가 `200 OK`입니다.
+- 실습용 사용자 `demo_user`가 반환됩니다.
+
+---
+#### 실습 9. API 문서 생성
+> `POST /ai-docs/api-docs`
+
+```json
+{
+    "server_url": "http://localhost:8001"
+}
+```
+
+확인할 것
+- `.env`의 `GROQ_API_KEY`가 정상이라면 응답 상태 코드가 `200 OK`입니다.
+- 응답에는 `endpoint_count`, `filename`, `path`, `content`가 들어옵니다.
+- `output/API_DOCS.md` 파일이 생성됩니다.
+- Groq API 키가 없거나 사용량 제한에 걸리면 `502 Bad Gateway`가 발생합니다.
+
+---
+#### 실습 10. Postman Collection과 README 생성
+> `POST /ai-docs/generate-all`
+
+```json
+{
+    "server_url": "http://localhost:8001/openapi.json"
+}
+```
 
 생성되는 파일:
 
@@ -387,24 +538,44 @@ output/API_DOCS.md
 | `output/README.md` | GitHub README 초안 |
 | `output/_spec_snapshot.json` | 변경 비교용 OpenAPI 스냅샷 |
 
----
-## Swagger UI 실습 5: 변경 문서 생성
+확인할 것
+- 응답의 `files` 배열에 위 파일 경로가 들어옵니다.
+- `server_url`은 서버 기본 URL과 `/openapi.json` 전체 URL을 모두 받을 수 있습니다.
 
-1. 먼저 `POST /ai-docs/generate-all`을 실행해 스냅샷을 저장합니다.
-2. 라우터 코드의 설명이나 엔드포인트를 수정합니다.
-3. 서버가 reload된 뒤 `POST /ai-docs/changes`를 실행합니다.
-4. 변경이 있으면 `output/API_CHANGES.md`가 생성됩니다.
+---
+#### 실습 11. 변경 문서 생성
+> `POST /ai-docs/changes`
+
+스냅샷 없이 먼저 실행해 봅니다.
+
+```json
+{
+    "server_url": "http://localhost:8001"
+}
+```
+
+확인할 것
+- `generate-all`을 실행하기 전이면 `400 Bad Request`가 발생합니다.
+- 응답 본문은 `{"detail": "이전 스냅샷이 없습니다. 먼저 /ai-docs/generate-all을 실행하세요."}` 형태입니다.
+
+이후 `POST /ai-docs/generate-all`을 한 번 실행해 스냅샷을 저장합니다.
+
+1. `routers/products.py`의 `summary`나 `description` 문구를 잠깐 수정합니다.
+2. 서버가 reload된 뒤 `POST /ai-docs/changes`를 다시 실행합니다.
+3. 변경이 있으면 `output/API_CHANGES.md`가 생성됩니다.
 
 ---
 ## 오류 상황 읽기
 
-| 상황 | 원인 | 해결 |
+| 상태 코드 | 상황 | 확인할 것 |
 |---|---|---|
-| OpenAPI 스펙 연결 실패 | `server_url` 오류 또는 서버 미실행 | 서버 주소와 포트를 확인 |
-| `401 인증이 필요합니다.` | Bearer 토큰 누락 | Swagger Authorize에 `demo-admin-token` 입력 |
-| `403 관리자 권한이 필요합니다.` | 토큰 값 오류 | 토큰 문자열을 다시 확인 |
-| Groq 요청 실패 | API 키 누락 또는 사용량 제한 | `.env`와 Groq 콘솔 확인 |
-| 토큰 한도 초과 | OpenAPI 스펙 또는 출력이 너무 큼 | 스펙 compact 범위를 줄이거나 문서별 엔드포인트를 사용 |
+| `400` | 변경 비교용 스냅샷 없음 | 먼저 `POST /ai-docs/generate-all` 실행 |
+| `401` | Bearer 토큰 누락 | Swagger Authorize에 `demo-admin-token` 입력 |
+| `403` | Bearer 토큰 값 오류 | `Bearer` 접두어 없이 토큰 문자열만 입력 |
+| `404` | 존재하지 않는 상품/주문 ID | 경로 파라미터 ID 확인 |
+| `409` | 상품명 또는 이메일 중복 | 다른 `name` 또는 `email` 사용 |
+| `422` | 요청 본문/파라미터 검증 실패 | `Field`의 `min_length`, `gt`, `ge` 조건 확인 |
+| `502` | OpenAPI 스펙 수집 또는 Groq 호출 실패 | 서버 주소, `.env`, Groq 사용량 제한 확인 |
 
 ---
 ## 핵심 정리

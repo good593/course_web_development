@@ -5,6 +5,7 @@ from core.metadata import TAGS_METADATA
 
 
 def custom_openapi(app: FastAPI) -> dict:
+    """Swagger UI에 표시할 OpenAPI 스키마를 수업용으로 보강합니다."""
     if app.openapi_schema:
         return app.openapi_schema
 
@@ -17,8 +18,13 @@ def custom_openapi(app: FastAPI) -> dict:
         tags=TAGS_METADATA,
     )
 
-    schema["components"]["securitySchemes"] = {
-        "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+    # HTTPBearer(scheme_name="BearerAuth")와 같은 이름으로 보안 스키마를 고정합니다.
+    components = schema.setdefault("components", {})
+    security_schemes = components.setdefault("securitySchemes", {})
+    security_schemes["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
     }
 
     app.openapi_schema = schema

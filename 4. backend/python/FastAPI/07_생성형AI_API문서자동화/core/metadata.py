@@ -24,11 +24,7 @@ API 문서, Postman Collection, README 초안을 자동 생성하는 실습용 �
 
 ```json
 {
-    "success": false,
-    "error": {
-        "code": "ERROR_CODE",
-        "message": "사람이 읽을 수 있는 설명"
-    }
+    "detail": "사람이 읽을 수 있는 오류 설명"
 }
 ```
 

@@ -1,9 +1,30 @@
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ErrorResponse(BaseModel):
-    success: bool = False
-    error: dict
+    """FastAPI가 기본으로 반환하는 오류 응답 모양입니다."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"detail": "상품을 찾을 수 없습니다."},
+                {
+                    "detail": {
+                        "code": "INSUFFICIENT_STOCK",
+                        "product_id": 1,
+                        "available": 2,
+                        "requested": 5,
+                    }
+                },
+            ]
+        }
+    )
+
+    detail: str | dict[str, Any] | list[dict[str, Any]] = Field(
+        description="오류 메시지 또는 검증 오류 상세 정보"
+    )
 
 
 COMMON_ERRORS = {

@@ -41,6 +41,7 @@ def create_product(
     product: ProductCreate,
     token: str = Security(require_admin_token),
 ) -> dict:
+    # token 매개변수는 Swagger의 Authorize 버튼과 OpenAPI security 정보를 만들기 위해 둡니다.
     return shop_store.create_product(product)
 
 
@@ -65,13 +66,17 @@ def get_product(
     "/{product_id}",
     response_model=ProductResponse,
     summary="상품 부분 수정",
-    description="상품 정보를 부분적으로 수정합니다. 전달된 필드만 업데이트됩니다.",
+    description="상품 정보를 부분적으로 수정합니다. 전달된 필드만 업데이트되며 관리자 권한이 필요합니다.",
     responses={
         404: {"description": "상품을 찾을 수 없음", "model": ErrorResponse},
         **COMMON_ERRORS,
     },
 )
-def update_product(product_id: int, update: ProductUpdate) -> dict:
+def update_product(
+    product_id: int,
+    update: ProductUpdate,
+    token: str = Security(require_admin_token),
+) -> dict:
     return shop_store.update_product(product_id, update)
 
 
@@ -79,11 +84,14 @@ def update_product(product_id: int, update: ProductUpdate) -> dict:
     "/{product_id}",
     status_code=204,
     summary="상품 삭제",
-    description="상품을 삭제합니다. 삭제된 상품은 복구할 수 없습니다.",
+    description="상품을 삭제합니다. 삭제된 상품은 복구할 수 없으며 관리자 권한이 필요합니다.",
     responses={
         404: {"description": "상품을 찾을 수 없음", "model": ErrorResponse},
         **COMMON_ERRORS,
     },
 )
-def delete_product(product_id: int) -> None:
+def delete_product(
+    product_id: int,
+    token: str = Security(require_admin_token),
+) -> None:
     shop_store.delete_product(product_id)
