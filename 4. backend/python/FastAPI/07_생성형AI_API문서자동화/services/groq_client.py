@@ -1,11 +1,13 @@
-import sys
-
 from dotenv import load_dotenv
 from groq import APIStatusError, Groq
 
 from settings import GROQ_TPM_SAFE_LIMIT, MODEL, ReasoningEffort
 
 load_dotenv()
+
+
+class GroqGenerationError(RuntimeError):
+    """Groq API로 텍스트를 생성할 수 없을 때 사용하는 예외."""
 
 
 def rough_token_estimate(text: str) -> int:
@@ -21,13 +23,15 @@ def stream_groq(
     prompt_tokens = rough_token_estimate(prompt)
     available_tokens = GROQ_TPM_SAFE_LIMIT - prompt_tokens
     if available_tokens < 512:
-        print("요청 프롬프트가 현재 Groq 토큰 한도보다 큽니다.")
-        print("OpenAPI 스펙을 더 줄이거나 Groq 사용 한도가 높은 모델/티어를 사용하세요.")
-        sys.exit(1)
+        raise GroqGenerationError(
+            "요청 프롬프트가 현재 Groq 토큰 한도보다 큽니다. "
+            "OpenAPI 스펙을 더 줄이거나 Groq 사용 한도가 높은 모델/티어를 사용하세요."
+        )
 
     if max_tokens > available_tokens:
         max_tokens = available_tokens
-        print(f"현재 Groq 한도에 맞춰 출력 토큰을 {max_tokens}개로 조정합니다.")
+
+    parts: list[str] = []
 
     try:
         client = Groq()
@@ -40,36 +44,22 @@ def stream_groq(
             temperature=0.2,
             stream=True,
         )
+
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+
+            text = chunk.choices[0].delta.content or ""
+            if not text:
+                continue
+
+            parts.append(text)
     except APIStatusError as error:
-        print(f"Groq API 요청 실패: {error.status_code}")
+        message = f"Groq API 요청 실패: {error.status_code}"
         if error.status_code in {413, 429}:
-            print("현재 모델/계정의 토큰 한도를 넘었습니다.")
-            print("잠시 후 다시 실행하거나, 더 작은 명령(docs/readme 등)으로 나눠 실행하세요.")
-        else:
-            print(error)
-        sys.exit(1)
-
-    parts: list[str] = []
-    usage = None
-
-    for chunk in stream:
-        chunk_usage = getattr(chunk, "usage", None)
-        if chunk_usage is not None:
-            usage = chunk_usage
-
-        if not chunk.choices:
-            continue
-
-        text = chunk.choices[0].delta.content or ""
-        if not text:
-            continue
-
-        print(text, end="", flush=True)
-        parts.append(text)
-
-    print()
-    if usage is not None:
-        print(f"입력 토큰: {usage.prompt_tokens} / 출력 토큰: {usage.completion_tokens}")
-        print(f"총 토큰: {usage.total_tokens}")
+            message += " - 현재 모델/계정의 토큰 한도를 넘었습니다."
+        raise GroqGenerationError(message) from error
+    except Exception as error:
+        raise GroqGenerationError(f"Groq API 요청 중 오류가 발생했습니다: {error}") from error
 
     return "".join(parts)

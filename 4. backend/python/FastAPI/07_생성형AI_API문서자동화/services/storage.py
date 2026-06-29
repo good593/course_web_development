@@ -9,7 +9,6 @@ def save_output(content: str, filename: str) -> Path:
     OUTPUT_DIR.mkdir(exist_ok=True)
     path = OUTPUT_DIR / filename
     path.write_text(content, encoding="utf-8")
-    print(f"저장 완료: {path}")
     return path
 
 

@@ -1,10 +1,13 @@
 import json
-import sys
 from typing import Any
 
 import httpx
 
 from settings import DEFAULT_OPENAPI_URL
+
+
+class OpenAPISpecError(RuntimeError):
+    """OpenAPI 스펙을 가져올 수 없을 때 사용하는 예외."""
 
 
 def compact_schema(schema: Any, components: dict[str, Any], seen: set[str] | None = None) -> Any:
@@ -173,21 +176,14 @@ def fetch_openapi_spec(url: str = DEFAULT_OPENAPI_URL) -> dict:
     try:
         response = httpx.get(spec_url, timeout=5)
         response.raise_for_status()
-        spec = response.json()
-        path_count = sum(len(v) for v in spec.get("paths", {}).values())
-        print(f"스펙 수집 완료 - 엔드포인트 {path_count}개")
-        return spec
-    except httpx.ConnectError:
-        print(f"서버에 연결할 수 없습니다: {spec_url}")
-        print("api_server.py FastAPI 서버를 먼저 실행하세요.")
-        print("  uvicorn api_server:app --reload --port 8001")
-        sys.exit(1)
+        return response.json()
+    except httpx.ConnectError as error:
+        raise OpenAPISpecError(f"서버에 연결할 수 없습니다: {spec_url}") from error
     except httpx.RequestError as error:
-        print(f"OpenAPI 스펙 요청 중 오류가 발생했습니다: {error}")
-        sys.exit(1)
+        raise OpenAPISpecError(f"OpenAPI 스펙 요청 중 오류가 발생했습니다: {error}") from error
     except httpx.HTTPStatusError as error:
-        print(f"OpenAPI 스펙 요청 실패: {error.response.status_code} {spec_url}")
-        sys.exit(1)
-    except ValueError:
-        print(f"OpenAPI 스펙이 JSON 형식이 아닙니다: {spec_url}")
-        sys.exit(1)
+        raise OpenAPISpecError(
+            f"OpenAPI 스펙 요청 실패: {error.response.status_code} {spec_url}"
+        ) from error
+    except ValueError as error:
+        raise OpenAPISpecError(f"OpenAPI 스펙이 JSON 형식이 아닙니다: {spec_url}") from error

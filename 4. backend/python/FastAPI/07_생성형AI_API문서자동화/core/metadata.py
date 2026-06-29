@@ -5,12 +5,20 @@ API_VERSION = "1.0.0"
 API_DESCRIPTION = """
 ## 개요
 
-이 API는 쇼핑몰 백엔드 서비스의 핵심 기능을 제공합니다.
+이 API는 FastAPI가 만든 OpenAPI 스펙을 생성형 AI에 전달해
+API 문서, Postman Collection, README 초안을 자동 생성하는 실습용 서버입니다.
+
+쇼핑몰 상품·주문·회원 엔드포인트는 문서화 대상이 되는 예제 API이고,
+`/ai-docs` 엔드포인트는 Groq API를 호출해 문서를 생성하는 기능입니다.
 
 ## 인증
 
 보호된 엔드포인트는 `Authorization: Bearer <token>` 헤더가 필요합니다.
 실습용 관리자 토큰은 `demo-admin-token`입니다.
+
+## 환경 변수
+
+생성형 AI 문서 생성 기능을 사용하려면 `.env` 파일에 `GROQ_API_KEY`를 설정해야 합니다.
 
 ## 에러 응답 형식
 
@@ -24,12 +32,10 @@ API_DESCRIPTION = """
 }
 ```
 
-## 버전 정책
-
-- **v1** (현재): 운영 중
 """
 
 TAGS_METADATA = [
+    {"name": "AI Documents", "description": "OpenAPI 스펙 기반 생성형 AI 문서 자동화"},
     {"name": "Products", "description": "상품 조회, 등록, 수정, 삭제"},
     {"name": "Orders", "description": "주문 생성 및 상태 관리"},
     {"name": "Users", "description": "회원 가입 및 정보 관리"},

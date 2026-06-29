@@ -31,7 +31,6 @@ def generate_api_docs(spec: dict) -> str:
 [OpenAPI 스펙]
 {spec_text}
 """
-    print("\n[마크다운 API 문서 생성 중...]\n")
     return stream_groq(prompt, max_tokens=DOCS_MAX_TOKENS, reasoning_effort="medium")
 
 
@@ -57,7 +56,6 @@ JSON만 출력해줘 (설명 없이). ```json ... ``` 블록으로 감싸줘.
 [OpenAPI 스펙]
 {spec_text}
 """
-    print("\n[Postman Collection 생성 중...]\n")
     raw = stream_groq(prompt, max_tokens=COLLECTION_MAX_TOKENS, reasoning_effort="low")
     return extract_json(raw)
 
@@ -81,13 +79,11 @@ def generate_readme(spec: dict) -> str:
 [OpenAPI 스펙]
 {spec_text}
 """
-    print("\n[README 생성 중...]\n")
     return stream_groq(prompt, max_tokens=README_MAX_TOKENS, reasoning_effort="medium")
 
 
 def generate_diff_docs(changes: list[dict]) -> str:
     if not changes:
-        print("변경된 엔드포인트가 없습니다.")
         return ""
 
     changes_text = json.dumps(changes, ensure_ascii=False, separators=(",", ":"))
@@ -101,5 +97,4 @@ def generate_diff_docs(changes: list[dict]) -> str:
 [변경사항]
 {changes_text}
 """
-    print(f"\n[변경된 엔드포인트 {len(changes)}개 문서화 중...]\n")
     return stream_groq(prompt, max_tokens=DIFF_MAX_TOKENS, reasoning_effort="medium")
