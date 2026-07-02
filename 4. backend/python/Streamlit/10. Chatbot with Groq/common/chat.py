@@ -9,7 +9,7 @@ from .constant import CHATBOT_ROLE, CHATBOT_MESSAGE
 def get_client():
     return Groq()
 
-def response_from_llm(prompt, message_history=None, model_id:str="gemma2-9b-it"):
+def response_from_llm(prompt, message_history=None, model_id:str="openai/gpt-oss-120b"):
     messages = [
         {
             CHATBOT_MESSAGE.role.name: CHATBOT_ROLE.assistant.name, 
