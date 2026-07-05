@@ -19,7 +19,10 @@ from routers.users import router as users_router
 
 def create_app() -> FastAPI:
     """README의 서버 실행 및 Swagger 실습에서 사용하는 FastAPI 앱을 만듭니다."""
+    # 운영 환경에서는 문서 화면을 숨기고, 개발/수업 환경에서만 Swagger UI를 켭니다.
     docs_enabled = not is_production()
+
+    # title, description, tags 같은 값은 /openapi.json과 Swagger UI에 그대로 표시됩니다.
     app = FastAPI(
         title="생성형 AI API 문서 자동화",
         summary="FastAPI OpenAPI 스펙을 Groq로 문서화하는 실습 API",
@@ -34,6 +37,7 @@ def create_app() -> FastAPI:
     )
 
     # 예제 쇼핑몰 API는 AI가 문서화할 OpenAPI 스펙의 재료가 됩니다.
+    # 각 router 파일은 한 주제의 엔드포인트를 모아 두고, 여기서 앱에 연결합니다.
     app.include_router(health_router)
     app.include_router(products_router)
     app.include_router(orders_router)

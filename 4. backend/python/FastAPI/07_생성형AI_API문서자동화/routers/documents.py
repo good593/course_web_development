@@ -15,8 +15,10 @@ from services.document_workflow import (
     create_readme,
 )
 
+# 이 라우터의 모든 엔드포인트는 /ai-docs로 시작하고 Swagger에서 AI Documents 그룹에 묶입니다.
 router = APIRouter(prefix="/ai-docs", tags=["AI Documents"])
 
+# 생성형 AI 호출이나 OpenAPI 수집 실패는 학생들이 Swagger에서 502로 확인할 수 있게 통일합니다.
 GENERATION_ERRORS = {
     502: {
         "description": "OpenAPI 스펙 수집 또는 Groq 문서 생성 실패",
@@ -38,6 +40,7 @@ def raise_generation_error(error: RuntimeError) -> None:
     responses=GENERATION_ERRORS,
 )
 def generate_api_document(request: DocumentGenerationRequest) -> dict:
+    # 라우터는 HTTP 요청/응답만 담당하고, 실제 문서 생성 흐름은 service 함수에 맡깁니다.
     try:
         return create_api_docs(request.server_url)
     except RuntimeError as error:
@@ -80,6 +83,7 @@ def generate_project_readme(request: DocumentGenerationRequest) -> dict:
     responses=GENERATION_ERRORS,
 )
 def generate_all(request: DocumentGenerationRequest) -> dict:
+    # 전체 생성은 API 문서, Postman Collection, README, 스냅샷 저장을 한 번에 실행합니다.
     try:
         return create_all_documents(request.server_url)
     except RuntimeError as error:
@@ -97,6 +101,7 @@ def generate_all(request: DocumentGenerationRequest) -> dict:
     },
 )
 def generate_changes(request: DocumentGenerationRequest) -> dict:
+    # 변경 문서화는 이전 스냅샷이 있어야 비교할 수 있으므로 400 예외를 따로 처리합니다.
     try:
         return create_change_docs(request.server_url)
     except MissingSnapshotError as error:

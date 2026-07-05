@@ -24,6 +24,7 @@ class DocumentGenerationRequest(BaseModel):
 class GeneratedDocumentResponse(BaseModel):
     """문서 하나를 생성하는 API의 응답 스키마입니다."""
 
+    # filename/path는 생성에 실패하거나 변경이 없을 때 None이 될 수 있습니다.
     endpoint_count: int = Field(description="OpenAPI 스펙에서 확인한 엔드포인트 수")
     filename: str | None = Field(default=None, description="저장된 파일명")
     path: str | None = Field(default=None, description="저장된 파일 경로")

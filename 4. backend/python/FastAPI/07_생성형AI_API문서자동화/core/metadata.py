@@ -1,7 +1,10 @@
+"""Swagger UI와 OpenAPI 문서에 표시할 기본 정보를 정의합니다."""
+
 import os
 
 API_VERSION = "1.0.0"
 
+# 긴 설명은 Swagger UI 상단과 /openapi.json의 info.description에 들어갑니다.
 API_DESCRIPTION = """
 ## 개요
 
@@ -30,6 +33,7 @@ API 문서, Postman Collection, README 초안을 자동 생성하는 실습용 �
 
 """
 
+# 태그는 Swagger UI에서 엔드포인트를 주제별로 묶는 기준입니다.
 TAGS_METADATA = [
     {"name": "AI Documents", "description": "OpenAPI 스펙 기반 생성형 AI 문서 자동화"},
     {"name": "Products", "description": "상품 조회, 등록, 수정, 삭제"},
@@ -40,4 +44,5 @@ TAGS_METADATA = [
 
 
 def is_production() -> bool:
+    """ENV=production이면 문서 화면을 숨기기 위해 True를 반환합니다."""
     return os.getenv("ENV", "development") == "production"

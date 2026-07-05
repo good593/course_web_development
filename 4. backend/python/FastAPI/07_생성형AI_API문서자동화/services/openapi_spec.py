@@ -17,9 +17,11 @@ def compact_schema(schema: Any, components: dict[str, Any], seen: set[str] | Non
 
     seen = seen or set()
 
+    # OpenAPI의 $ref는 components/schemas에 있는 실제 스키마를 가리키는 별칭입니다.
     if "$ref" in schema:
         ref = schema["$ref"]
         name = ref.rsplit("/", 1)[-1]
+        # 서로 참조하는 스키마가 있을 수 있으므로 이미 본 이름은 더 펼치지 않습니다.
         if name in seen:
             return {"ref": name}
         target = components.get(name)
@@ -30,6 +32,7 @@ def compact_schema(schema: Any, components: dict[str, Any], seen: set[str] | Non
             compact.setdefault("name", name)
         return compact
 
+    # LLM 프롬프트에 꼭 필요한 검증 조건과 설명만 남겨 토큰 사용량을 줄입니다.
     keep_keys = {
         "type",
         "format",
@@ -51,6 +54,7 @@ def compact_schema(schema: Any, components: dict[str, Any], seen: set[str] | Non
     compact = {key: schema[key] for key in keep_keys if key in schema}
 
     if "properties" in schema:
+        # 객체의 각 필드도 같은 방식으로 재귀적으로 압축합니다.
         compact["properties"] = {
             name: compact_schema(value, components, seen)
             for name, value in schema["properties"].items()
@@ -67,6 +71,7 @@ def compact_schema(schema: Any, components: dict[str, Any], seen: set[str] | Non
 
 
 def compact_content(content: dict[str, Any] | None, components: dict[str, Any]) -> dict[str, Any] | None:
+    """requestBody 또는 response content에서 JSON 예시와 스키마만 추립니다."""
     if not content:
         return None
 
@@ -84,6 +89,7 @@ def compact_content(content: dict[str, Any] | None, components: dict[str, Any]) 
 
 
 def compact_parameter(parameter: dict[str, Any], components: dict[str, Any]) -> dict[str, Any]:
+    """경로/쿼리 파라미터에서 문서 생성에 필요한 정보만 추립니다."""
     compact = {
         key: parameter[key]
         for key in ("name", "in", "required", "description", "example", "examples")
@@ -115,6 +121,7 @@ def compact_openapi_spec(spec: dict) -> dict:
     for path, methods in spec.get("paths", {}).items():
         compact["paths"][path] = {}
         for method, operation in methods.items():
+            # Swagger 내부용 메서드가 섞여도 실제 HTTP 메서드만 문서화합니다.
             if method.lower() not in {"get", "post", "put", "patch", "delete"}:
                 continue
 
@@ -159,6 +166,7 @@ def compact_openapi_spec(spec: dict) -> dict:
 
 
 def format_spec_for_prompt(spec: dict) -> str:
+    """압축한 OpenAPI 스펙을 줄바꿈 없는 JSON 문자열로 만들어 토큰을 절약합니다."""
     compact = compact_openapi_spec(spec)
     return json.dumps(compact, ensure_ascii=False, separators=(",", ":"))
 
@@ -172,6 +180,7 @@ def build_openapi_url(base_or_spec_url: str) -> str:
 
 
 def fetch_openapi_spec(url: str = DEFAULT_OPENAPI_URL) -> dict:
+    """서버의 /openapi.json을 HTTP로 요청해 파이썬 dict로 반환합니다."""
     spec_url = build_openapi_url(url)
     try:
         response = httpx.get(spec_url, timeout=5)

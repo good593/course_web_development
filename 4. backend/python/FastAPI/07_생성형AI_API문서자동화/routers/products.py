@@ -7,6 +7,7 @@ from schemas.common import COMMON_ERRORS, ErrorResponse
 from schemas.products import ProductCreate, ProductResponse, ProductUpdate
 from services import shop_store
 
+# 상품 관련 엔드포인트는 모두 /products 아래에 모입니다.
 router = APIRouter(prefix="/products", tags=["Products"])
 
 
@@ -22,6 +23,7 @@ def list_products(
     page: int = Query(default=1, ge=1, description="페이지 번호"),
     size: int = Query(default=10, ge=1, le=100, description="페이지당 항목 수"),
 ) -> list[dict]:
+    # Query로 받은 필터/페이지 값을 그대로 서비스 계층에 전달합니다.
     return shop_store.list_products(category=category, page=page, size=size)
 
 
@@ -59,6 +61,7 @@ def create_product(
 def get_product(
     product_id: int = Path(description="조회할 상품 ID", ge=1, examples={"기본 예시": {"value": 1}}),
 ) -> dict:
+    # Path 검증을 통과한 product_id만 서비스 함수로 넘어옵니다.
     return shop_store.get_product(product_id)
 
 
@@ -77,6 +80,7 @@ def update_product(
     update: ProductUpdate,
     token: str = Security(require_admin_token),
 ) -> dict:
+    # ProductUpdate는 None인 필드를 제외하고 전달된 값만 수정하는 데 사용됩니다.
     return shop_store.update_product(product_id, update)
 
 
@@ -94,4 +98,5 @@ def delete_product(
     product_id: int,
     token: str = Security(require_admin_token),
 ) -> None:
+    # 204 응답은 본문이 없으므로 성공 시 아무 값도 반환하지 않습니다.
     shop_store.delete_product(product_id)

@@ -12,6 +12,8 @@ from settings import (
 
 
 def generate_api_docs(spec: dict) -> str:
+    """OpenAPI 스펙을 개발자용 마크다운 문서로 바꾸도록 Groq에 요청합니다."""
+    # 전체 OpenAPI JSON은 길기 때문에, 프롬프트에 필요한 핵심 정보만 압축합니다.
     spec_text = format_spec_for_prompt(spec)
     prompt = f"""다음 OpenAPI 스펙을 분석해서 개발자용 API 문서를 마크다운으로 작성해줘.
 
@@ -35,6 +37,7 @@ def generate_api_docs(spec: dict) -> str:
 
 
 def generate_postman_collection(spec: dict) -> str:
+    """OpenAPI 스펙을 Postman Collection JSON으로 바꾸도록 Groq에 요청합니다."""
     spec_text = format_spec_for_prompt(spec)
     prompt = f"""다음 OpenAPI 스펙을 Postman Collection v2.1 JSON으로 변환해줘.
 
@@ -57,10 +60,12 @@ JSON만 출력해줘 (설명 없이). ```json ... ``` 블록으로 감싸줘.
 {spec_text}
 """
     raw = stream_groq(prompt, max_tokens=COLLECTION_MAX_TOKENS, reasoning_effort="low")
+    # 모델이 ```json 코드블록으로 감싸서 응답해도 실제 JSON 문자열만 저장합니다.
     return extract_json(raw)
 
 
 def generate_readme(spec: dict) -> str:
+    """OpenAPI 스펙을 GitHub README 초안으로 바꾸도록 Groq에 요청합니다."""
     spec_text = format_spec_for_prompt(spec)
     prompt = f"""다음 OpenAPI 스펙을 기반으로 GitHub README.md를 한국어로 작성해줘.
 
@@ -83,9 +88,11 @@ def generate_readme(spec: dict) -> str:
 
 
 def generate_diff_docs(changes: list[dict]) -> str:
+    """변경된 엔드포인트 목록만 전달해 변경 문서를 생성합니다."""
     if not changes:
         return ""
 
+    # ensure_ascii=False를 사용하면 한글 설명이 \uXXXX 형태로 바뀌지 않습니다.
     changes_text = json.dumps(changes, ensure_ascii=False, separators=(",", ":"))
     prompt = f"""다음 API 변경사항에 대한 마크다운 문서를 작성해줘.
 
