@@ -3,11 +3,20 @@ import time
 from collections.abc import Iterator
 
 from fastapi import HTTPException
-from groq import Groq
+from groq import AuthenticationError, Groq
 
 from backend.core.config import GROQ_MODEL, SYSTEM_PROMPT
 from backend.core.groq_client import get_client
 from backend.schemas import ChatRequest, ChatResponse
+
+GROQ_AUTH_ERROR_MESSAGE = (
+    "Groq API Key가 유효하지 않거나 폐기되었습니다. "
+    ".env의 GROQ_API_KEY를 Groq Console에서 새로 발급한 키로 교체하세요."
+)
+
+
+def is_groq_auth_error(exc: Exception) -> bool:
+    return isinstance(exc, AuthenticationError) or getattr(exc, "status_code", None) == 401
 
 
 def get_client_for_request() -> Groq:
@@ -37,6 +46,8 @@ def generate_reply(req: ChatRequest) -> ChatResponse:
     except HTTPException:
         raise
     except Exception as exc:
+        if is_groq_auth_error(exc):
+            raise HTTPException(status_code=500, detail=GROQ_AUTH_ERROR_MESSAGE) from exc
         raise HTTPException(status_code=502, detail=f"Groq API 호출 실패: {exc}") from exc
 
     usage = getattr(response, "usage", None)
@@ -69,6 +80,11 @@ def stream_reply(req: ChatRequest, client: Groq) -> Iterator[str]:
 
         yield "data: [DONE]\n\n"
     except Exception as exc:
-        payload = json.dumps({"error": f"Groq API 호출 실패: {exc}"}, ensure_ascii=False)
+        message = (
+            GROQ_AUTH_ERROR_MESSAGE
+            if is_groq_auth_error(exc)
+            else f"Groq API 호출 실패: {exc}"
+        )
+        payload = json.dumps({"error": message}, ensure_ascii=False)
         yield f"data: {payload}\n\n"
         yield "data: [DONE]\n\n"

@@ -290,11 +290,14 @@ answer = st.write_stream(
 uv sync
 .\.venv\Scripts\activate
 ```
+![alt text](./img/image.png)
 
 ---
 ## 환경변수
 > `.env.example`을 참고해서 `.env` 파일을 만듭니다.
+> `GROQ_API_KEY`에는 Groq Console에서 발급한 실제 API Key를 넣습니다.
 
+![alt text](./img/image-1.png)
 
 ---
 ## FastAPI 실행
@@ -302,27 +305,34 @@ uv sync
 ```shell
 python -m uvicorn backend.main:app --reload --port 8001
 ```
+![alt text](./img/image-2.png)
 
 ---
-## Streamlit 실행
+### Swagger 실습 (http://localhost:8001/docs)
+> 각 API에서 **Try it out**을 누른 뒤 아래 순서대로 입력합니다.
 
-```shell
-streamlit run frontend/app.py
-```
+![alt text](./img/image-4.png)
 
 ---
-## Swagger 실습 1. 상태 확인
+#### 상태 확인
 
 `GET /health`
 
+![alt text](./img/image-5.png)
+
+---
 확인할 것:
 
 - 응답 상태 코드가 `200 OK`입니다.
-- `groq_api_key`가 `configured`이면 `.env` 설정이 된 상태입니다.
+- `groq_api_key`가 `configured`이면 `.env`에 API Key 형식의 값이 있는 상태입니다.
+- `placeholder`이면 예제값이므로 실제 Groq API Key로 교체합니다.
 - `missing`이면 `.env`의 `GROQ_API_KEY`를 확인합니다.
+- `/chat`에서 `Groq API Key가 유효하지 않거나 폐기되었습니다.`가 나오면 새 API Key를 발급해 `.env`에 다시 넣습니다.
+
+![alt text](./img/image-6.png)
 
 ---
-## Swagger 실습 2. 일반 챗봇 응답
+#### 일반 챗봇 응답
 
 `POST /chat`
 
@@ -334,88 +344,30 @@ streamlit run frontend/app.py
   "max_tokens": 500
 }
 ```
+---
+![alt text](./img/image-7.png)
 
+---
 확인할 것:
-
 - 응답에 `reply`가 들어옵니다.
 - `elapsed_ms`로 응답 시간을 확인할 수 있습니다.
 
+![alt text](./img/image-8.png)
+
 ---
-## Swagger 실습 3. 검증 오류
-
-`POST /chat`
-
-```json
-{
-  "message": "",
-  "history": [],
-  "temperature": 3,
-  "max_tokens": 0
-}
+## Streamlit 실행
+- FastAPI 실행하고 있는 상태에서 실행 
+```shell
+streamlit run frontend/app.py
 ```
-
-확인할 것:
-
-- 응답 상태 코드가 `422 Unprocessable Entity`입니다.
-- `message`, `temperature`, `max_tokens` 검증 오류가 표시됩니다.
+![alt text](./img/image-3.png)
 
 ---
-## Swagger 실습 4. 스트리밍 응답
+#### 챗봇 테스트 
 
-`POST /chat/stream`
-
-```json
-{
-  "message": "SSE 스트리밍을 챗봇에 쓰는 이유를 설명해줘.",
-  "history": [],
-  "temperature": 0.7,
-  "max_tokens": 500
-}
-```
-
-확인할 것:
-
-- 응답 Content-Type이 `text/event-stream`입니다.
-- 응답 본문에 `data:` 줄이 포함됩니다.
+![alt text](./img/image-9.png)
 
 ---
-## Streamlit 실습
+#### FastAPI 상태 확인 
 
-1. `http://localhost:8501`에 접속합니다.
-2. 사이드바에서 FastAPI URL이 `http://localhost:8001`인지 확인합니다.
-3. **FastAPI 상태 확인** 버튼을 누릅니다.
-4. 채팅 입력창에 질문을 입력합니다.
-5. 답변이 글자 단위로 이어지는지 확인합니다.
-6. 같은 대화에서 후속 질문을 입력해 맥락이 유지되는지 확인합니다.
-
----
-## 오류 상황 읽기
-
-| 상태 | 원인 | 해결 |
-|---|---|---|
-| FastAPI 연결 실패 | 서버가 꺼져 있음 | `uvicorn` 실행 확인 |
-| `groq_api_key: missing` | `.env` 설정 누락 | `.env` 파일 확인 |
-| `422` | 요청 형식 오류 | Swagger의 요청 예시 확인 |
-| `502` | Groq API 호출 실패 | API Key, 모델명, 네트워크 확인 |
-
----
-## 핵심 정리
-
-| 개념 | 이번 예제의 위치 |
-|---|---|
-| Streamlit 화면 | `frontend/app.py` |
-| 대화 기록 | `st.session_state.messages` |
-| FastAPI 서버 | `backend/main.py` |
-| 요청 검증 | `backend/schemas/chat.py` |
-| LLM 호출 | `backend/services/chat_service.py` |
-| API 호출 | `frontend/common/api_client.py` |
-| 스트리밍 | `StreamingResponse` + `st.write_stream()` |
-
----
-## 다음에 확장할 수 있는 것
-
-- 대화 기록을 SQLite나 Redis에 저장하기
-- 로그인 사용자별로 세션 분리하기
-- `/chat/sessions` API를 만들어 서버가 세션을 관리하기
-- Docker Compose로 FastAPI와 Streamlit을 함께 실행하기
-- 배포 환경에서 API Key를 서버 환경변수로 관리하기
+![alt text](./img/image-10.png)
