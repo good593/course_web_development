@@ -12,18 +12,22 @@ paginate: true
 # Streamlit + FastAPI Chatbot
 
 ---
-## 이번 시간에 만들 것
+## 10번 강의와 달라지는 점
 
-10번 강의에서는 Streamlit 앱이 Groq API를 직접 호출했습니다.
+10번:
 
-이번 강의에서는 역할을 나눕니다.
+```text
+Streamlit -> Groq
+```
 
-| 역할 | 담당 |
-|---|---|
-| 화면 | Streamlit |
-| API 서버 | FastAPI |
-| LLM 호출 | FastAPI 서버 안의 Groq SDK |
-| 대화 기록 | Streamlit `session_state` |
+11번:
+
+```text
+Streamlit -> FastAPI -> Groq
+```
+
+Streamlit은 더 이상 Groq SDK를 직접 알 필요가 없습니다.
+화면은 HTTP API만 호출합니다.
 
 ---
 ## 왜 FastAPI를 사이에 둘까?
@@ -82,22 +86,18 @@ Chatbot with FastAPI/
 ```
 
 ---
-## 모듈화 기준
-
-기존 FastAPI 강의처럼 역할별로 파일을 나눕니다.
+### backend 모듈화 기준
 
 | 계층 | 담당 |
 |---|---|
-| `main.py` | 앱 생성과 라우터 연결 |
-| `routers/` | URL과 HTTP 응답 방식 |
-| `schemas/` | 요청/응답 데이터 모양 |
+| `backend/main.py` | 앱 생성과 라우터 연결 |
+| `backend/routers/` | URL과 HTTP 응답 방식 |
+| `backend/schemas/` | 요청/응답 데이터 모양 |
 | `services/` | 실제 Groq 호출과 스트리밍 처리 |
-| `core/` | 환경변수와 외부 클라이언트 |
+| `backend/core/` | 환경변수와 외부 클라이언트 |
 
 ---
-## 프론트 모듈화 기준
-
-10번 Streamlit 강의처럼 화면 코드와 공통 로직을 나눕니다.
+### frontend 모듈화 기준
 
 | 파일 | 담당 |
 |---|---|
@@ -107,25 +107,7 @@ Chatbot with FastAPI/
 | `frontend/common/api_client.py` | `/health`, `/chat/stream` 호출 |
 
 ---
-## 10번 강의와 달라지는 점
-
-10번:
-
-```text
-Streamlit -> Groq
-```
-
-11번:
-
-```text
-Streamlit -> FastAPI -> Groq
-```
-
-Streamlit은 더 이상 Groq SDK를 직접 알 필요가 없습니다.
-화면은 HTTP API만 호출합니다.
-
----
-## FastAPI 엔드포인트
+## FastAPI(backend) 엔드포인트
 
 | 메서드 | 경로 | 기능 |
 |---|---|---|
@@ -136,7 +118,7 @@ Streamlit은 더 이상 Groq SDK를 직접 알 필요가 없습니다.
 | `GET` | `/docs` | Swagger UI |
 
 ---
-## 요청 데이터
+### 요청 데이터
 
 `POST /chat`, `POST /chat/stream`은 같은 요청 모양을 사용합니다.
 
@@ -150,7 +132,7 @@ Streamlit은 더 이상 Groq SDK를 직접 알 필요가 없습니다.
 ```
 
 ---
-## 요청 검증
+### 요청 검증
 
 FastAPI는 Pydantic 모델로 요청을 검증합니다.
 
@@ -164,7 +146,7 @@ FastAPI는 Pydantic 모델로 요청을 검증합니다.
 조건을 어기면 FastAPI가 자동으로 `422` 응답을 반환합니다.
 
 ---
-## FastAPI 서버 코드 핵심
+### FastAPI 서버 코드 핵심
 
 ```python
 def create_app() -> FastAPI:
@@ -184,7 +166,7 @@ FastAPI 서버는 화면을 만들지 않습니다.
 `main.py`는 앱을 만들고 라우터만 연결합니다.
 
 ---
-## Groq 클라이언트 생성
+### Groq 클라이언트 생성
 
 `backend/core/groq_client.py`
 
@@ -202,7 +184,7 @@ API Key는 `.env`에만 둡니다.
 Streamlit 화면 코드에는 Groq API Key를 넣지 않습니다.
 
 ---
-## 일반 JSON 응답
+### 일반 JSON 응답
 
 `backend/services/chat_service.py`
 
@@ -218,7 +200,7 @@ response = get_client_for_request().chat.completions.create(
 `POST /chat`은 답변이 완성될 때까지 기다렸다가 JSON으로 반환합니다.
 
 ---
-## 스트리밍 응답
+### 스트리밍 응답
 
 `backend/services/chat_service.py`
 
@@ -235,7 +217,7 @@ stream = client.chat.completions.create(
 `POST /chat/stream`은 답변 조각을 받는 즉시 Streamlit으로 전달합니다.
 
 ---
-## Server-Sent Events(SSE) 형식
+### Server-Sent Events(SSE) 형식
 - `SSE`는 웹 서버가 클라이언트(브라우저)에게 실시간으로 데이터를 계속 푸시(push) 할 수 있게 해주는 기술입니다.
 - `FastAPI`는 스트리밍 데이터를 Server-Sent Events 형식으로 보냅니다.
 
@@ -250,7 +232,7 @@ data: [DONE]
 Streamlit은 이 줄을 읽고 `token`만 꺼내 화면에 이어 붙입니다.
 
 ---
-## Streamlit 화면 코드 핵심
+## Streamlit(frontend) 화면 코드 핵심
 
 ```python
 if "messages" not in st.session_state:
@@ -261,7 +243,7 @@ Streamlit은 새로고침처럼 스크립트가 다시 실행되는 구조입니
 대화 기록은 `st.session_state`에 저장해야 화면에 계속 남습니다.
 
 ---
-## Streamlit에서 FastAPI 호출
+### Streamlit(frontend)에서 FastAPI(backend) 호출
 
 `frontend/common/api_client.py`
 
@@ -279,7 +261,7 @@ Streamlit은 Groq를 직접 호출하지 않습니다.
 FastAPI의 `/chat/stream` API만 호출합니다.
 
 ---
-## 화면에 스트리밍 출력
+### 화면에 스트리밍 출력
 
 `frontend/app.py`
 
@@ -298,75 +280,34 @@ answer = st.write_stream(
 `st.write_stream()`은 generator가 주는 문자열을 실시간으로 화면에 출력합니다.
 
 ---
-## 환경변수
-
-`.env.example`을 `.env`로 복사한 뒤 값을 채웁니다.
-
-```env
-GROQ_API_KEY=gsk_your_api_key_here
-GROQ_MODEL=openai/gpt-oss-120b
-CHATBOT_SYSTEM_PROMPT=You are a helpful assistant. You must answer in Korean.
-FASTAPI_BASE_URL=http://localhost:8001
-```
+# 서버 실행
 
 ---
 ## 가상환경 만들기
 
-11번 폴더로 이동합니다.
-
-```shell
-cd "4. backend\python\Streamlit\11. Chatbot with FastAPI"
-```
-
 가상환경을 만들고 활성화합니다.
-
 ```shell
-uv venv .venv --python 3.12
+uv sync
 .\.venv\Scripts\activate
 ```
 
 ---
-## 라이브러리 설치
+## 환경변수
+> `.env.example`을 참고해서 `.env` 파일을 만듭니다.
 
-```shell
-uv pip install -r .\requirements.txt
-```
-
-환경변수 파일을 만듭니다.
-
-```shell
-Copy-Item .env.example .env
-```
-
-그 다음 `.env` 파일에 본인의 `GROQ_API_KEY`를 넣습니다.
 
 ---
-## 터미널 1: FastAPI 실행
+## FastAPI 실행
 
 ```shell
 python -m uvicorn backend.main:app --reload --port 8001
 ```
 
-확인할 주소:
-
-```text
-http://localhost:8001/docs
-```
-
 ---
-## 터미널 2: Streamlit 실행
-
-새 터미널을 하나 더 열고 같은 폴더에서 실행합니다.
+## Streamlit 실행
 
 ```shell
-.\.venv\Scripts\activate
 streamlit run frontend/app.py
-```
-
-확인할 주소:
-
-```text
-http://localhost:8501
 ```
 
 ---
