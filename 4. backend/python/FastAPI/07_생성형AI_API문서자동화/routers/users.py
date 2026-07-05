@@ -15,7 +15,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
     status_code=201,
     summary="회원 가입",
     responses={
-        409: {"description": "이메일 또는 사용자명 중복", "model": ErrorResponse},
+        409: {"description": "이메일 중복", "model": ErrorResponse},
         **COMMON_ERRORS,
     },
 )

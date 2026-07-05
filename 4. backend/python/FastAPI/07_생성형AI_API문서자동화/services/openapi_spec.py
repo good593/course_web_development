@@ -18,19 +18,11 @@ def compact_schema(schema: Any, components: dict[str, Any], seen: set[str] | Non
     seen = seen or set()
 
     # OpenAPI의 $ref는 components/schemas에 있는 실제 스키마를 가리키는 별칭입니다.
+    # 엔드포인트마다 같은 스키마를 계속 펼치면 프롬프트가 너무 커지므로 이름만 남깁니다.
     if "$ref" in schema:
         ref = schema["$ref"]
         name = ref.rsplit("/", 1)[-1]
-        # 서로 참조하는 스키마가 있을 수 있으므로 이미 본 이름은 더 펼치지 않습니다.
-        if name in seen:
-            return {"ref": name}
-        target = components.get(name)
-        if target is None:
-            return {"ref": name}
-        compact = compact_schema(target, components, seen | {name})
-        if isinstance(compact, dict):
-            compact.setdefault("name", name)
-        return compact
+        return {"ref": name}
 
     # LLM 프롬프트에 꼭 필요한 검증 조건과 설명만 남겨 토큰 사용량을 줄입니다.
     keep_keys = {
@@ -100,6 +92,16 @@ def compact_parameter(parameter: dict[str, Any], components: dict[str, Any]) -> 
     return compact
 
 
+def compact_component_schemas(components: dict[str, Any]) -> dict[str, Any]:
+    """중복 확장을 줄이기 위해 Pydantic 스키마 정의를 한 번만 모읍니다."""
+    skipped = {"HTTPValidationError", "ValidationError"}
+    return {
+        name: compact_schema(schema, components)
+        for name, schema in components.items()
+        if name not in skipped
+    }
+
+
 def compact_openapi_spec(spec: dict) -> dict:
     """LLM 프롬프트에 필요한 OpenAPI 정보만 추립니다."""
     components = spec.get("components", {}).get("schemas", {})
@@ -117,6 +119,8 @@ def compact_openapi_spec(spec: dict) -> dict:
         compact["servers"] = spec["servers"]
     if security_schemes:
         compact["securitySchemes"] = security_schemes
+    if components:
+        compact["schemas"] = compact_component_schemas(components)
 
     for path, methods in spec.get("paths", {}).items():
         compact["paths"][path] = {}
@@ -127,7 +131,7 @@ def compact_openapi_spec(spec: dict) -> dict:
 
             op = {
                 key: operation[key]
-                for key in ("tags", "summary", "description", "operationId")
+                for key in ("tags", "summary", "description")
                 if key in operation
             }
 
