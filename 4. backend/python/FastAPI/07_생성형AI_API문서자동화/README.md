@@ -394,20 +394,20 @@ Llama, Gemma, Qwen 등의 모델 실행
 ---
 > [Groq API Key 생성](https://console.groq.com/keys) 
 
-![alt text](image.png)
+![alt text](./img/image.png)
 
 ---
-![alt text](image-1.png)
+![alt text](./img/image-1.png)
 
 ---
 > 복사 
 
-![alt text](image-2.png)
+![alt text](./img/image-2.png)
 
 ---
 > .env 파일 생성 후 붙여놓기 
 
-![alt text](image-3.png)
+![alt text](./img/image-3.png)
 
 ---
 ### 가상환경 생성
@@ -422,7 +422,7 @@ uv sync
 ```bash
 python -m uvicorn main:app --reload --port 8001
 ```
-![alt text](image-4.png)
+![alt text](./img/image-4.png)
 
 ---
 ### Swagger UI 실습 (http://localhost:8001/docs)
@@ -432,27 +432,27 @@ python -m uvicorn main:app --reload --port 8001
 #### 실습 1. 서버 상태와 OpenAPI 원본 확인
 > `GET /health`
 
-![alt text](image-5.png)
+![alt text](./img/image-5.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `200 OK`입니다.
 - 응답에 `status`, `version`, `timestamp`가 들어옵니다.
 
-![alt text](image-6.png)
+![alt text](./img/image-6.png)
 
 ---
 #### 실습 2. 상품 목록 조회와 Query Parameter 확인
 > `GET /products`
 
-![alt text](image-7.png)
+![alt text](./img/image-7.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `200 OK`입니다.
 - 예제 상품인 `무선 마우스`, `기계식 키보드`가 조회됩니다.
 
-![alt text](image-8.png)
+![alt text](./img/image-8.png)
 
 ---
 #### 실습 3. 인증 실패 응답 확인
@@ -470,14 +470,14 @@ python -m uvicorn main:app --reload --port 8001
 ```
 
 ---
-![alt text](image-9.png)
+![alt text](./img/image-9.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `401 Unauthorized`입니다.
 - 응답 본문은 `{"detail": "인증이 필요합니다."}` 형태입니다.
 
-![alt text](image-10.png)
+![alt text](./img/image-10.png)
 
 ---
 #### 실습 4. 관리자 토큰으로 상품 등록
@@ -485,14 +485,14 @@ python -m uvicorn main:app --reload --port 8001
 
 1. Swagger UI 오른쪽 위 `Authorize` 버튼을 누릅니다.
 
-![alt text](image-11.png)
+![alt text](./img/image-11.png)
 
 ---
 2. 값에 `demo-admin-token`만 입력합니다.
 
-![alt text](image-12.png)
+![alt text](./img/image-12.png)
 
-![alt text](image-13.png)
+![alt text](./img/image-13.png)
 
 ---
 3. 다시 `POST /products`를 실행합니다.
@@ -507,14 +507,14 @@ python -m uvicorn main:app --reload --port 8001
 ```
 
 ---
-![alt text](image-14.png)
+![alt text](./img/image-14.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `201 Created`입니다.
 - 응답에 새 상품 `id`가 들어옵니다.
 
-![alt text](image-15.png)
+![alt text](./img/image-15.png)
 
 ---
 #### 실습 5. 요청 검증 오류 확인
@@ -529,14 +529,14 @@ python -m uvicorn main:app --reload --port 8001
 }
 ```
 ---
-![alt text](image-16.png)
+![alt text](./img/image-16.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `422 Unprocessable Entity`입니다.
 - `name`, `price`, `stock` 필드 검증 오류가 `detail` 목록으로 표시됩니다.
 
-![alt text](image-17.png)
+![alt text](./img/image-17.png)
 
 ---
 #### 실습 6. 상품 수정과 삭제
@@ -551,27 +551,27 @@ python -m uvicorn main:app --reload --port 8001
 }
 ```
 ---
-![w:1000](image-18.png)
+![w:1000](./img/image-18.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `200 OK`입니다.
 - 전달한 필드만 변경됩니다.
 
-![alt text](image-19.png)
+![alt text](./img/image-19.png)
 
 ---
 삭제도 같은 상품 ID로 확인합니다.
 
 > `DELETE /products/{product_id}`
 
-![alt text](image-20.png)
+![alt text](./img/image-20.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `204 No Content`입니다.
 
-![alt text](image-21.png)
+![alt text](./img/image-21.png)
 
 ---
 #### 실습 7. 주문 생성
@@ -588,14 +588,14 @@ python -m uvicorn main:app --reload --port 8001
 }
 ```
 ---
-![alt text](image-22.png)
+![alt text](./img/image-22.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `201 Created`입니다.
 - 응답에 `id`, `items`, `total_price`, `status`, `created_at`이 들어옵니다.
 
-![alt text](image-23.png)
+![alt text](./img/image-23.png)
 
 ---
 #### 실습 8. 회원 가입과 내 정보 조회
@@ -609,28 +609,28 @@ python -m uvicorn main:app --reload --port 8001
 }
 ```
 ---
-![alt text](image-24.png)
+![alt text](./img/image-24.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `201 Created`입니다.
 - 응답에는 `password`가 포함되지 않습니다.
 
-![alt text](image-25.png)
+![alt text](./img/image-25.png)
 
 ---
 이어서 관리자 토큰이 들어간 상태로 실행합니다.
 
 > `GET /users/me`
 
-![alt text](image-26.png)
+![alt text](./img/image-26.png)
 
 ---
 확인할 것
 - 응답 상태 코드가 `200 OK`입니다.
 - 실습용 사용자 `demo_user`가 반환됩니다.
 
-![alt text](image-27.png)
+![alt text](./img/image-27.png)
 
 ---
 #### 실습 9. API 문서 생성
@@ -642,19 +642,19 @@ python -m uvicorn main:app --reload --port 8001
 }
 ```
 ---
-![alt text](image-28.png)
+![alt text](./img/image-28.png)
 
 ---
 확인할 것
 - `.env`의 `GROQ_API_KEY`가 정상이라면 응답 상태 코드가 `200 OK`입니다.
 - 응답에는 `endpoint_count`, `filename`, `path`, `content`가 들어옵니다.
 
-![alt text](image-29.png)
+![alt text](./img/image-29.png)
 
 ---
 - `output/API_DOCS.md` 파일이 생성됩니다.
 
-![alt text](image-30.png)
+![alt text](./img/image-30.png)
 
 ---
 #### 실습 10. 전체 문서 생성
@@ -666,14 +666,14 @@ python -m uvicorn main:app --reload --port 8001
 }
 ```
 ---
-![alt text](image-31.png)
+![alt text](./img/image-31.png)
 
 ---
 확인할 것
 - 응답의 `files` 배열에 위 파일 경로가 들어옵니다.
 - `server_url`은 서버 기본 URL과 `/openapi.json` 전체 URL을 모두 받을 수 있습니다.
 
-![alt text](image-32.png)
+![alt text](./img/image-32.png)
 
 ---
 생성되는 파일:
@@ -686,14 +686,14 @@ python -m uvicorn main:app --reload --port 8001
 | `output/_spec_snapshot.json` | 변경 비교용 OpenAPI 스냅샷 |
 
 ---
-![alt text](image-33.png)
+![alt text](./img/image-33.png)
 
 ---
 #### 실습 11. 변경 문서 생성
 
 1. `routers/products.py`의 `summary`나 `description` 문구를 잠깐 수정합니다.
 
-![alt text](image-35.png)
+![alt text](./img/image-35.png)
 
 ---
 2. 서버가 reload된 뒤 `POST /ai-docs/changes`를 다시 실행합니다.
@@ -707,12 +707,12 @@ python -m uvicorn main:app --reload --port 8001
 }
 ```
 ---
-![alt text](image-34.png)
+![alt text](./img/image-34.png)
 
 ---
 3. 변경이 있으면 `output/API_CHANGES.md`가 생성됩니다.
 
-![alt text](image-36.png)
+![alt text](./img/image-36.png)
 
 ---
 ## 오류 상황 읽기
