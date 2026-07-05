@@ -59,7 +59,7 @@ Groq LLM
 ## 프로젝트 구조
 
 ```text
-11. Chatbot with FastAPI/
+Chatbot with FastAPI/
 ├── backend/
 │   ├── main.py              <- FastAPI 앱 생성 + 라우터 등록
 │   ├── core/
@@ -78,9 +78,7 @@ Groq LLM
 │       ├── config.py        <- 프론트 환경변수와 기본값
 │       ├── message.py       <- 대화 메시지 생성
 │       └── api_client.py    <- FastAPI 호출, SSE 파싱
-├── .env.example             <- 환경변수 예시
-├── requirements.txt         <- 공통 의존성
-└── README.md                <- 강의자료
+└── .env.example             <- 환경변수 예시
 ```
 
 ---
@@ -237,9 +235,9 @@ stream = client.chat.completions.create(
 `POST /chat/stream`은 답변 조각을 받는 즉시 Streamlit으로 전달합니다.
 
 ---
-## SSE 형식
-
-FastAPI는 스트리밍 데이터를 Server-Sent Events 형식으로 보냅니다.
+## Server-Sent Events(SSE) 형식
+- `SSE`는 웹 서버가 클라이언트(브라우저)에게 실시간으로 데이터를 계속 푸시(push) 할 수 있게 해주는 기술입니다.
+- `FastAPI`는 스트리밍 데이터를 Server-Sent Events 형식으로 보냅니다.
 
 ```text
 data: {"token": "안녕"}
