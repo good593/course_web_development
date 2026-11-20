@@ -15,7 +15,7 @@ paginate: true
 서버로부터 넘겨받은 HTML 코드는 웹 브라우저에서 읽어온 후 화면에 시각적으로 표시하게 되는데, 이 과정을 렌더링이라고 합니다.
 
 ---
-![w:900](./img/web_overview/image.png)
+![w:800](./img/web_overview/image.png)
 
 ---
 # [웹표준(Web Standards)](https://seulbinim.github.io/WSA/standards.html#%EC%9B%B9%ED%91%9C%EC%A4%80-%EC%9D%B4%EB%9E%80)
@@ -89,7 +89,16 @@ meta 요소를 이용한 정확한 문서 정보의 제공과 적절한 제목(h
 검색 의도에 맞춰 색인된 콘텐츠에 순위를 부여한 후 결과로 제공합니다.
 
 ---
-![w:800](./img/web_overview/image-10.png)
+![w:750](./img/web_overview/image-10.png)
+
+---
+## [LLM을 통한 웹사이트 검색 최적화](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide?hl=ko)
+
+| 용어 | 뜻 | 주로 보는 것 |
+|---|---|---|
+| **GEO** | 생성형 엔진 최적화 (*Generative Engine Optimization*) | AI가 만든 답변에 내 콘텐츠나 브랜드가 인용·언급되는가 |
+| **AEO** | 답변 엔진 최적화 (*Answer Engine Optimization*) | 사용자의 질문에 대한 직접 답변에 내 정보가 쓰이는가 |
+| **LLMO** | 대형 언어 모델 최적화 (*Large Language Model Optimization*) | ChatGPT 같은 모델이 내 정보를 이해하고 언급하는가 |
 
 ---
 # [통신 프로토콜](https://ko.wikipedia.org/wiki/%ED%86%B5%EC%8B%A0_%ED%94%84%EB%A1%9C%ED%86%A0%EC%BD%9C)
@@ -108,7 +117,7 @@ meta 요소를 이용한 정확한 문서 정보의 제공과 적절한 제목(h
 - HTTP는 서버/클라이언트 모델을 따른다.
 - 클라이언트(브라우저)에서 요청(request)를 보내면 서버는 요청을 처리해서 응답(response)한다.
 
-![w:900](./img/web_overview/image-11.png)
+![w:800](./img/web_overview/image-11.png)
 
 ---
 클라이언트:   
@@ -140,8 +149,8 @@ meta 요소를 이용한 정확한 문서 정보의 제공과 적절한 제목(h
 - 하지만, 실제로는 데이터 유지가 필요한 경우가 많다.
 
 ---
-![w:800](./img/web_overview/image-13.png)
-![w:800](./img/web_overview/image-14.png)
+![w:750](./img/web_overview/image-13.png)
+![w:750](./img/web_overview/image-14.png)
 
 ---
 ![Alt text](./img/web_overview/image-15.png)

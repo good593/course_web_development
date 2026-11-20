@@ -43,8 +43,7 @@ paginate: true
 ![Alt text](./img/login/image-1.png)
 
 ---
-### Session    
-> 서버와 클라이언트의 연결이 활성화된 상태
+### Session: 서버와 클라이언트의 연결이 활성화된 상태
 - 클라이언트가 서버와 통신을 시작하면 서버는 해당 클라이언트에 대해 유일한 값인 세션 id를 부여, 세션 스토리지에 세션 정보를 저장함.
 - 클라이언트는 이 세션id를 쿠키를 통해 기억함.
 - 이후 클라이언트가 어떤 요청을 보낼 때마다 헤더의 cookie에 세션 id를 담아서 전송함.
@@ -130,7 +129,7 @@ Access Token이 만료될때 마다 9~11 과정을 거칠 필요는 없다. Acce
 15. 새로운 Access Token을 헤더에 실어 API 요청을 한다.
 
 ---
-![w:900](./img/login/image-6.png)
+![w:800](./img/login/image-6.png)
 
 
 
